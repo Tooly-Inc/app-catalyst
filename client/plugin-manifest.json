@@ -1,0 +1,15 @@
+{
+  "locale": ["en", "fr"],
+  "modules": {
+    "widgets": [
+      {
+        "location": "crm.customTab.container",
+        "url": "/index.html",
+        "name": "Dashboard Leads Tooly"
+      }
+    ]
+  },
+  "cspDomains": {
+    "connect-src": ["https://*.catalystserverless.com"]
+  }
+}

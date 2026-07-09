@@ -1,0 +1,445 @@
+/* ============================================================
+   Dashboard Leads — Charte graphique officielle Tooly
+   Jaune signature #FFE924 · Neutres #1D2124→#FFFFFF
+   Accent turquoise #00CECE · Corps Lexend
+   ============================================================ */
+
+:root {
+  /* Jaunes */
+  --jaune-0: #ffe924; /* signature */
+  --jaune-1: #fff282;
+  --jaune-2: #fffbd2;
+  --jaune-3: #fffff2;
+  --jaune-n1: #bda612; /* jaune foncé, texte sur clair */
+
+  /* Turquoise (accent) */
+  --bleu-0: #00cece;
+  --bleu-1: #6ad9d9;
+  --bleu-2: #d4ffff;
+  --bleu-n1: #008687;
+
+  /* Rouge (statuts / erreurs) */
+  --rouge-0: #ff482f;
+  --rouge-n1: #ba301e;
+  --rouge-2: #ffd7d1;
+
+  /* Neutres */
+  --n7: #1d2124; /* le plus foncé, texte principal */
+  --n6: #323232;
+  --n5: #484649;
+  --n4: #5a555e;
+  --n3: #807986; /* texte secondaire */
+  --n2: #b3afb6;
+  --n1: #f7f6f6; /* fond */
+  --n0: #ffffff;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow-sm: 0 1px 2px rgba(29, 33, 36, 0.06);
+  --shadow: 0 2px 8px rgba(29, 33, 36, 0.06), 0 8px 28px rgba(29, 33, 36, 0.05);
+  --shadow-lift:
+    0 4px 12px rgba(29, 33, 36, 0.1), 0 16px 40px rgba(29, 33, 36, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    "Lexend",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: var(--n1);
+  color: var(--n7);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 28px 22px 56px;
+}
+
+/* ============================================================
+   HERO — bloc signature jaune avec pictogramme + stats
+   ============================================================ */
+.hero {
+  position: relative;
+  background: var(--jaune-0);
+  border-radius: var(--radius);
+  padding: 30px 34px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* Motif de points subtil en filigrane */
+.hero::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -60px;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(
+    circle,
+    rgba(29, 33, 36, 0.06) 1.5px,
+    transparent 1.6px
+  );
+  background-size: 18px 18px;
+  transform: rotate(8deg);
+  pointer-events: none;
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo-picto {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(29, 33, 36, 0.15));
+}
+.logo-picto svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.brand h1 {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--n7);
+  line-height: 1.1;
+}
+.brand .subtitle {
+  font-size: 13.5px;
+  color: var(--n6);
+  font-weight: 400;
+  margin-top: 3px;
+  opacity: 0.75;
+}
+
+/* Bloc statistique dans le hero */
+.hero-stat {
+  background: var(--n7);
+  color: var(--n0);
+  border-radius: var(--radius-sm);
+  padding: 12px 24px;
+  text-align: center;
+  min-width: 108px;
+}
+.hero-stat .stat-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.hero-stat .stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  opacity: 0.7;
+  margin-top: 5px;
+}
+
+/* ============================================================
+   TOOLBAR — recherche + filtres
+   ============================================================ */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.search-wrap {
+  flex: 1;
+  min-width: 280px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 16px;
+  color: var(--n3);
+  pointer-events: none;
+}
+#searchInput {
+  width: 100%;
+  padding: 13px 42px 13px 44px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  color: var(--n7);
+  background: var(--n0);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+#searchInput::placeholder {
+  color: var(--n3);
+}
+#searchInput:focus {
+  outline: none;
+  border-color: var(--jaune-0);
+  box-shadow: 0 0 0 3px var(--jaune-1);
+}
+.clear-btn {
+  position: absolute;
+  right: 14px;
+  border: none;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--n3);
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+.clear-btn:hover {
+  color: var(--n7);
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+}
+#statusFilter {
+  padding: 13px 16px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  color: var(--n7);
+  background: var(--n0);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+#statusFilter:focus {
+  outline: none;
+  border-color: var(--jaune-0);
+  box-shadow: 0 0 0 3px var(--jaune-1);
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 13px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--n7);
+  color: var(--n0);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.12s,
+    background 0.15s;
+}
+.refresh-btn:hover {
+  background: var(--n6);
+  transform: translateY(-1px);
+}
+.refresh-btn:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.content {
+  background: var(--n0);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.leads-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.leads-table thead th {
+  text-align: left;
+  padding: 15px 22px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--n3);
+  background: var(--n0);
+  border-bottom: 2px solid var(--n1);
+  white-space: nowrap;
+}
+.leads-table tbody td {
+  padding: 15px 22px;
+  border-bottom: 1px solid var(--n1);
+  vertical-align: middle;
+}
+.leads-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.leads-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.leads-table tbody tr:hover {
+  background: var(--jaune-3);
+}
+
+.lead-name {
+  font-weight: 600;
+  color: var(--n7);
+}
+.lead-company {
+  color: var(--n4);
+}
+.lead-email a,
+.lead-phone a {
+  color: var(--n5);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.lead-email a:hover {
+  color: var(--bleu-n1);
+  text-decoration: underline;
+}
+.muted {
+  color: var(--n2);
+}
+
+/* Badge de statut — turquoise en accent */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bleu-2);
+  color: var(--bleu-n1);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   ÉTATS
+   ============================================================ */
+.state {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--n3);
+}
+.state-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  color: var(--n2);
+}
+.empty-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--n7);
+  margin-bottom: 5px;
+}
+.empty-sub {
+  font-size: 13.5px;
+  color: var(--n3);
+}
+.error-state .empty-title {
+  color: var(--rouge-n1);
+}
+
+.spinner {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 16px;
+  border: 3px solid var(--n1);
+  border-top-color: var(--jaune-0);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 620px) {
+  .app {
+    padding: 18px 14px 40px;
+  }
+  .hero {
+    padding: 24px 22px;
+  }
+  .hero-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .brand h1 {
+    font-size: 22px;
+  }
+  .leads-table thead {
+    display: none;
+  }
+  .leads-table,
+  .leads-table tbody,
+  .leads-table tr,
+  .leads-table td {
+    display: block;
+    width: 100%;
+  }
+  .leads-table tbody tr {
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--n1);
+  }
+  .leads-table tbody td {
+    border: none;
+    padding: 5px 22px;
+  }
+  .leads-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--n3);
+    margin-bottom: 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

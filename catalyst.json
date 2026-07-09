@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "targets": [
+      "leads_api",
+      "sync_leads",
+      "test_function"
+    ],
+    "source": "functions",
+    "ignore": []
+  },
+  "client": {
+    "source": "client"
+  }
+}
