@@ -4,7 +4,8 @@
       "leads_api",
       "sync_leads",
       "test_function",
-      "sync_contact"
+      "sync_contact",
+      "sync_deals"
     ],
     "source": "functions",
     "ignore": []

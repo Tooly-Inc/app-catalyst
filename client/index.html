@@ -49,8 +49,8 @@
               </svg>
             </span>
             <div>
-              <h1>Dashboard Leads</h1>
-              <p class="subtitle">Recherche et suivi de vos prospects</p>
+              <h1>Dashboard Leads/Contacts</h1>
+              <p class="subtitle">Recherche et suivi de vos prospects/contacts</p>
             </div>
           </div>
           <div class="view-toggle" role="tablist">
@@ -63,7 +63,7 @@
           </div>
           <div class="hero-stat">
             <span class="stat-value" id="statTotal">—</span>
-            <span class="stat-label">Leads affichés</span>
+            <span class="stat-label" id="statLabel">Leads affichés</span>
           </div>
         </div>
       </header>
@@ -163,6 +163,26 @@
           <p class="empty-sub" id="errorMsg"></p>
         </div>
       </main>
+    </div>
+
+    <!-- Popup de détail -->
+    <div class="modal-overlay" id="modalOverlay" hidden>
+      <div
+        class="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+      >
+        <button class="modal-close" id="modalClose" aria-label="Fermer">
+          &times;
+        </button>
+        <div class="modal-header">
+          <span class="modal-avatar" id="modalAvatar"></span>
+          <h2 id="modalTitle">Détails</h2>
+          <p class="modal-subtitle" id="modalSubtitle" hidden></p>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
     </div>
 
     <script src="js/config.js"></script>

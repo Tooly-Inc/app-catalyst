@@ -20,17 +20,25 @@
     btnContacts: document.getElementById("btnContacts"),
     colStatut: document.getElementById("colStatut"),
     colSociete: document.getElementById("colSociete"),
+    modalOverlay: document.getElementById("modalOverlay"),
+    modalAvatar: document.getElementById("modalAvatar"),
+    modalTitle: document.getElementById("modalTitle"),
+    modalSubtitle: document.getElementById("modalSubtitle"),
+    modalBody: document.getElementById("modalBody"),
+    modalClose: document.getElementById("modalClose"),
   };
 
   let allRecords = []; // dernier jeu de résultats reçu du serveur
   let currentStatuses = new Set();
   let currentView = "leads"; // "leads" ou "contacts"
+  let pendingViewFade = false; // anime le contenu à l'arrivée des données après un changement d'onglet
 
   // Configuration par vue : endpoints, libellés de colonnes et placeholder
   const VIEWS = {
     leads: {
       list: "/leads?per_page=200",
       search: "/leads/search",
+      detail: "/leads/detail",
       statLabel: "Leads affichés",
       colSociete: "Société",
       colStatut: "Statut",
@@ -40,20 +48,33 @@
     contacts: {
       list: "/contacts",
       search: "/contacts/search",
+      detail: "/contacts/detail",
       statLabel: "Contacts affichés",
       colSociete: "Société",
       colStatut: "Poste",
       placeholder: "Rechercher un contact (nom, société, email…)",
-      showStatusFilter: false,
+      showStatusFilter: true,
     },
   };
 
   // --- Helpers d'affichage d'état ---
+  function replayAnimation(el, className) {
+    el.classList.remove(className);
+    void el.offsetWidth; // force le reflow pour pouvoir rejouer l'animation
+    el.classList.add(className);
+  }
+
   function showState(name) {
     els.loading.hidden = name !== "loading";
     els.empty.hidden = name !== "empty";
     els.error.hidden = name !== "error";
     document.querySelector(".table-wrap").hidden = name !== "table";
+
+    // Anime l'arrivée du contenu une fois, juste après un changement d'onglet
+    if (pendingViewFade && name !== "loading") {
+      pendingViewFade = false;
+      replayAnimation(document.querySelector(".content"), "fade-in");
+    }
   }
 
   function escapeHtml(s) {
@@ -92,7 +113,7 @@
     els.body.innerHTML = filtered
       .map(
         (l) => `
-  <tr class="lead-row" data-url="${escapeHtml(l.crmUrl)}" title="Ouvrir la fiche dans le CRM">
+  <tr class="lead-row" data-id="${escapeHtml(l.id)}" title="Voir les détails">
     <td data-label="Nom" class="lead-name">${escapeHtml(l.name) || '<span class="muted">—</span>'}</td>
     <td data-label="${escapeHtml(societeLabel)}" class="lead-company">${escapeHtml(l.company) || '<span class="muted">—</span>'}</td>
     <td data-label="Email" class="lead-email">${
@@ -115,23 +136,22 @@
       )
       .join("");
 
-    // Ouverture de la fiche au clic (hors clic sur un lien email/tél)
+    // Ouverture de la popup de détail au clic (hors clic sur un lien email/tél)
     els.body.querySelectorAll(".lead-row").forEach((row) => {
       row.addEventListener("click", (e) => {
         if (e.target.closest("a")) return; // laisse les liens mailto/tel fonctionner
-        const url = row.getAttribute("data-url");
-        if (url) window.open(url, "_blank", "noopener");
+        const id = row.getAttribute("data-id");
+        if (id) openDetailModal(id);
       });
     });
 
     showState("table");
   }
 
-  // --- Alimente le filtre statut à partir des données ---
+  // --- Alimente le filtre statut/poste à partir des données ---
   function refreshStatusOptions(records) {
     const cfg = VIEWS[currentView];
     if (!cfg.showStatusFilter) {
-      // La vue Contacts n'utilise pas le filtre : on le masque et on le vide
       els.status.hidden = true;
       els.status.innerHTML = '<option value="">Tous les statuts</option>';
       return;
@@ -139,8 +159,9 @@
     els.status.hidden = false;
     records.forEach((l) => l.status && currentStatuses.add(l.status));
     const selected = els.status.value;
+    const allLabel = `Tous les ${cfg.colStatut.toLowerCase()}s`;
     els.status.innerHTML =
-      '<option value="">Tous les statuts</option>' +
+      `<option value="">${escapeHtml(allLabel)}</option>` +
       [...currentStatuses]
         .sort()
         .map(
@@ -161,6 +182,141 @@
     }
     return res.json();
   }
+
+  // --- Popup de détail ---
+  function openModal() {
+    els.modalOverlay.hidden = false;
+    // Double rAF : garantit que le navigateur peint l'état fermé avant
+    // d'appliquer "is-open", sinon les deux états sont fusionnés et rien n'anime.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        els.modalOverlay.classList.add("is-open");
+      });
+    });
+  }
+
+  function closeModal() {
+    if (els.modalOverlay.hidden) return;
+    els.modalOverlay.classList.remove("is-open");
+
+    const finish = () => {
+      if (els.modalOverlay.classList.contains("is-open")) return; // rouverte entre-temps
+      els.modalOverlay.hidden = true;
+      els.modalBody.innerHTML = "";
+      els.modalAvatar.textContent = "";
+      els.modalSubtitle.hidden = true;
+      els.modalSubtitle.textContent = "";
+    };
+    let done = false;
+    const panel = els.modalOverlay.querySelector(".modal-panel");
+    panel.addEventListener(
+      "transitionend",
+      () => {
+        if (done) return;
+        done = true;
+        finish();
+      },
+      { once: true },
+    );
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      finish();
+    }, 220);
+  }
+
+  function initials(name) {
+    const parts = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return "?";
+    return parts
+      .slice(0, 2)
+      .map((p) => p[0].toUpperCase())
+      .join("");
+  }
+
+  // Remplace le contenu du popup avec un fondu — un nouveau nœud "fade-in" à
+  // chaque appel, donc l'animation rejoue à chaque changement d'état.
+  function setModalBody(html) {
+    els.modalBody.innerHTML = `<div class="fade-in">${html}</div>`;
+  }
+
+  function renderDetailField(f, cfg) {
+    const value =
+      f.label === cfg.colStatut
+        ? `<span class="badge">${escapeHtml(f.value)}</span>`
+        : escapeHtml(f.value);
+    return `
+  <div class="detail-row">
+    <span class="detail-label">${escapeHtml(f.label)}</span>
+    <span class="detail-value">${value}</span>
+  </div>`;
+  }
+
+  function renderDeal(d) {
+    const meta = [d.type, d.accountName].filter(Boolean).map(escapeHtml).join(" · ");
+    return `
+  <div class="deal-card">
+    <div class="deal-card-head">
+      <span class="deal-name">${escapeHtml(d.name) || "Deal sans nom"}</span>
+      ${d.stage ? `<span class="badge">${escapeHtml(d.stage)}</span>` : ""}
+    </div>
+    ${meta ? `<p class="deal-card-meta">${meta}</p>` : ""}
+    ${d.reasonForLoss ? `<p class="deal-card-reason">Raison de perte : ${escapeHtml(d.reasonForLoss)}</p>` : ""}
+  </div>`;
+  }
+
+  async function openDetailModal(id) {
+    const cfg = VIEWS[currentView];
+    els.modalTitle.textContent = "Détails";
+    els.modalAvatar.textContent = "";
+    els.modalSubtitle.hidden = true;
+    setModalBody('<div class="spinner"></div>');
+    openModal();
+    try {
+      const data = await apiGet(`${cfg.detail}/${encodeURIComponent(id)}`);
+      els.modalTitle.textContent = data.title || "Détails";
+      els.modalAvatar.textContent = initials(data.title);
+      if (data.subtitle) {
+        els.modalSubtitle.textContent = data.subtitle;
+        els.modalSubtitle.hidden = false;
+      }
+      const groups = data.groups || [];
+      const groupsHtml = groups
+        .map(
+          (g) => `
+  <div class="detail-group">
+    <p class="detail-group-title">${escapeHtml(g.name)}</p>
+    ${g.fields.map((f) => renderDetailField(f, cfg)).join("")}
+  </div>`,
+        )
+        .join("");
+
+      const deals = data.deals || [];
+      const dealsHtml = deals.length
+        ? `
+  <div class="detail-group">
+    <p class="detail-group-title">Deal${deals.length > 1 ? "s" : ""} associé${deals.length > 1 ? "s" : ""}</p>
+    ${deals.map(renderDeal).join("")}
+  </div>`
+        : "";
+
+      const bodyHtml = groupsHtml + dealsHtml;
+      setModalBody(bodyHtml || '<p class="empty-sub">Aucune information disponible.</p>');
+    } catch (err) {
+      setModalBody(`<p class="empty-sub">Erreur : ${escapeHtml(err.message)}</p>`);
+    }
+  }
+
+  els.modalClose.addEventListener("click", closeModal);
+  els.modalOverlay.addEventListener("click", (e) => {
+    if (e.target === els.modalOverlay) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !els.modalOverlay.hidden) closeModal();
+  });
 
   // Charge la liste selon la vue courante
   async function loadRecords() {
@@ -216,6 +372,7 @@
     currentStatuses = new Set();
     els.status.value = "";
 
+    pendingViewFade = true;
     loadRecords();
   }
 
