@@ -225,6 +225,62 @@ app.get("/leads/detail/:id", async (req, res) => {
   }
 });
 
+// Liste des contacts (depuis Data Store)
+app.get("/contacts", async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const zcql = catalystApp.zcql();
+    const rows = await zcql.executeZCQLQuery(
+      "SELECT crm_id, name, account_name, email, phone, title FROM Contacts_Cache ORDER BY crm_created_time DESC LIMIT 200"
+    );
+    const contacts = rows.map((r) => {
+      const id = r.Contacts_Cache.crm_id;
+      return {
+        id,
+        crmUrl: ORG ? `${CRM_BASE}/crm/org${ORG}/tab/Contacts/${id}` : `${CRM_BASE}/crm/tab/Contacts/${id}`,
+        name: r.Contacts_Cache.name,
+        company: r.Contacts_Cache.account_name, // réutilise la colonne "Société" du tableau
+        email: r.Contacts_Cache.email,
+        phone: r.Contacts_Cache.phone,
+        status: r.Contacts_Cache.title,          // réutilise la colonne "Statut" pour le poste
+      };
+    });
+    res.status(200).json({ leads: contacts }); // même clé "leads" → réutilise le front tel quel
+  } catch (err) {
+    res.status(500).json({ error: "Erreur Data Store contacts", detail: err.message });
+  }
+});
+
+// Recherche contacts
+app.get("/contacts/search", async (req, res) => {
+  try {
+    const q = (req.query.q || "").trim().replace(/'/g, "''");
+    if (!q) return res.status(400).json({ error: "Paramètre 'q' requis." });
+    const catalystApp = catalyst.initialize(req);
+    const zcql = catalystApp.zcql();
+    const rows = await zcql.executeZCQLQuery(
+      `SELECT crm_id, name, account_name, email, phone, title FROM Contacts_Cache WHERE name LIKE '%${q}%' OR account_name LIKE '%${q}%' OR email LIKE '%${q}%' LIMIT 200`
+    );
+    const contacts = rows.map((r) => {
+      const id = r.Contacts_Cache.crm_id;
+      return {
+        id,
+        crmUrl: ORG ? `${CRM_BASE}/crm/org${ORG}/tab/Contacts/${id}` : `${CRM_BASE}/crm/tab/Contacts/${id}`,
+        name: r.Contacts_Cache.name,
+        company: r.Contacts_Cache.account_name,
+        email: r.Contacts_Cache.email,
+        phone: r.Contacts_Cache.phone,
+        status: r.Contacts_Cache.title,
+      };
+    });
+    res.status(200).json({ leads: contacts });
+  } catch (err) {
+    res.status(500).json({ error: "Erreur recherche contacts", detail: err.message });
+  }
+});
+
+// Healthcheck : vérifie que les variables d'environnement sont présentes
+
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",

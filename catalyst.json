@@ -3,7 +3,8 @@
     "targets": [
       "leads_api",
       "sync_leads",
-      "test_function"
+      "test_function",
+      "sync_contact"
     ],
     "source": "functions",
     "ignore": []

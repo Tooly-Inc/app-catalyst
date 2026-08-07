@@ -53,6 +53,14 @@
               <p class="subtitle">Recherche et suivi de vos prospects</p>
             </div>
           </div>
+          <div class="view-toggle" role="tablist">
+            <button class="view-btn active" id="btnLeads" role="tab">
+              Leads
+            </button>
+            <button class="view-btn" id="btnContacts" role="tab">
+              Contacts
+            </button>
+          </div>
           <div class="hero-stat">
             <span class="stat-value" id="statTotal">—</span>
             <span class="stat-label">Leads affichés</span>
@@ -119,6 +127,8 @@
                 <th>Email</th>
                 <th>Téléphone</th>
                 <th>Statut</th>
+                <th id="colSociete">Société</th>
+                <th id="colStatut">Statut</th>
               </tr>
             </thead>
             <tbody id="leadsBody"></tbody>
