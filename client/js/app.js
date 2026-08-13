@@ -21,11 +21,18 @@
     colStatut: document.getElementById("colStatut"),
     colSociete: document.getElementById("colSociete"),
     modalOverlay: document.getElementById("modalOverlay"),
+    modalPanel: document.getElementById("modalPanel"),
+    modalViews: document.getElementById("modalViews"),
     modalAvatar: document.getElementById("modalAvatar"),
     modalTitle: document.getElementById("modalTitle"),
     modalSubtitle: document.getElementById("modalSubtitle"),
     modalBody: document.getElementById("modalBody"),
     modalClose: document.getElementById("modalClose"),
+    modalBack: document.getElementById("modalBack"),
+    dealAvatar: document.getElementById("dealAvatar"),
+    dealTitle: document.getElementById("dealTitle"),
+    dealSubtitle: document.getElementById("dealSubtitle"),
+    dealBody: document.getElementById("dealBody"),
   };
 
   let allRecords = []; // dernier jeu de résultats reçu du serveur
@@ -206,6 +213,16 @@
       els.modalAvatar.textContent = "";
       els.modalSubtitle.hidden = true;
       els.modalSubtitle.textContent = "";
+      // Réinitialise le volet affaire pour que la popup rouvre sur la fiche principale
+      els.modalPanel.classList.remove("is-deal");
+      els.modalViews.classList.remove("show-deal");
+      els.modalBack.classList.remove("is-visible");
+      els.modalBack.hidden = true;
+      els.dealBody.innerHTML = "";
+      els.dealAvatar.textContent = "";
+      els.dealSubtitle.hidden = true;
+      els.dealSubtitle.textContent = "";
+      els.modalPanel.style.height = ""; // au cas où une animation de hauteur était en cours
     };
     let done = false;
     const panel = els.modalOverlay.querySelector(".modal-panel");
@@ -222,7 +239,7 @@
       if (done) return;
       done = true;
       finish();
-    }, 220);
+    }, 500);
   }
 
   function initials(name) {
@@ -235,6 +252,45 @@
       .slice(0, 2)
       .map((p) => p[0].toUpperCase())
       .join("");
+  }
+
+  // Anime le changement de hauteur du panneau avec le même bounce que le
+  // redimensionnement "bureau", en verrouillant une valeur en px avant/après
+  // la mutation (une hauteur "auto" ne peut pas s'animer nativement en CSS).
+  function animatePanelHeight(applyChange) {
+    const panel = els.modalPanel;
+    const before = panel.getBoundingClientRect().height;
+    if (!before) {
+      applyChange(); // popup pas encore visible : rien à animer
+      return;
+    }
+    // On mesure la hauteur naturelle du nouveau contenu AVANT de verrouiller le
+    // panneau à l'ancienne valeur : une fois contraint, la chaîne flex (tous les
+    // min-height:0 nécessaires au scroll interne) se rétrécit réellement pour
+    // s'y loger plutôt que de déborder derrière l'overflow:hidden, donc mesurer
+    // après coup donnerait la même valeur que "before" et casserait la transition.
+    applyChange();
+    const after = panel.getBoundingClientRect().height;
+    panel.style.height = `${before}px`;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        panel.style.height = `${after}px`;
+      });
+    });
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      panel.style.height = "";
+    };
+    panel.addEventListener(
+      "transitionend",
+      (e) => {
+        if (e.propertyName === "height") release();
+      },
+      { once: true },
+    );
+    setTimeout(release, 650);
   }
 
   // Remplace le contenu du popup avec un fondu — un nouveau nœud "fade-in" à
@@ -258,7 +314,7 @@
   function renderDeal(d) {
     const meta = [d.type, d.accountName].filter(Boolean).map(escapeHtml).join(" · ");
     return `
-  <div class="deal-card">
+  <div class="deal-card" data-deal-id="${escapeHtml(d.id)}" title="Voir l'affaire">
     <div class="deal-card-head">
       <span class="deal-name">${escapeHtml(d.name) || "Deal sans nom"}</span>
       ${d.stage ? `<span class="badge">${escapeHtml(d.stage)}</span>` : ""}
@@ -268,8 +324,82 @@
   </div>`;
   }
 
+  // --- Volet affaire : glissement + redimensionnement "bureau" avec bounce ---
+  function showBackButton() {
+    els.modalBack.hidden = false;
+    // Double rAF, même technique que openModal(), pour garantir la transition.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        els.modalBack.classList.add("is-visible");
+      });
+    });
+  }
+
+  function hideBackButton() {
+    els.modalBack.classList.remove("is-visible");
+    setTimeout(() => {
+      els.modalBack.hidden = true;
+    }, 200);
+  }
+
+  function setDealBody(html) {
+    els.dealBody.innerHTML = `<div class="fade-in">${html}</div>`;
+  }
+
+  async function openDealDetail(id) {
+    els.modalPanel.classList.add("is-deal");
+    els.modalViews.classList.add("show-deal");
+    showBackButton();
+
+    els.dealTitle.textContent = "Affaire";
+    els.dealAvatar.textContent = "";
+    els.dealSubtitle.hidden = true;
+    setDealBody('<div class="spinner"></div>');
+
+    try {
+      const data = await apiGet(`/deals/detail/${encodeURIComponent(id)}`);
+      const groups = data.groups || [];
+      const groupsHtml = groups
+        .map(
+          (g) => `
+  <div class="detail-group">
+    <p class="detail-group-title">${escapeHtml(g.name)}</p>
+    ${g.fields.map((f) => renderDetailField(f, {})).join("")}
+  </div>`,
+        )
+        .join("");
+      const crmLink = data.crmUrl
+        ? `<a class="crm-link" href="${escapeHtml(data.crmUrl)}" target="_blank" rel="noopener">Voir la fiche sur Zoho CRM</a>`
+        : "";
+
+      animatePanelHeight(() => {
+        els.dealTitle.textContent = data.title || "Affaire";
+        els.dealAvatar.textContent = initials(data.title);
+        if (data.subtitle) {
+          els.dealSubtitle.textContent = data.subtitle;
+          els.dealSubtitle.hidden = false;
+        }
+        setDealBody(
+          (groupsHtml || '<p class="empty-sub">Aucune information disponible.</p>') + crmLink,
+        );
+      });
+    } catch (err) {
+      animatePanelHeight(() => {
+        setDealBody(`<p class="empty-sub">Erreur : ${escapeHtml(err.message)}</p>`);
+      });
+    }
+  }
+
+  function closeDealDetail() {
+    els.modalViews.classList.remove("show-deal");
+    els.modalPanel.classList.remove("is-deal");
+    hideBackButton();
+  }
+
   async function openDetailModal(id) {
     const cfg = VIEWS[currentView];
+    closeDealDetail();
+    els.modalBack.hidden = true;
     els.modalTitle.textContent = "Détails";
     els.modalAvatar.textContent = "";
     els.modalSubtitle.hidden = true;
@@ -277,12 +407,6 @@
     openModal();
     try {
       const data = await apiGet(`${cfg.detail}/${encodeURIComponent(id)}`);
-      els.modalTitle.textContent = data.title || "Détails";
-      els.modalAvatar.textContent = initials(data.title);
-      if (data.subtitle) {
-        els.modalSubtitle.textContent = data.subtitle;
-        els.modalSubtitle.hidden = false;
-      }
       const groups = data.groups || [];
       const groupsHtml = groups
         .map(
@@ -303,19 +427,44 @@
   </div>`
         : "";
 
-      const bodyHtml = groupsHtml + dealsHtml;
-      setModalBody(bodyHtml || '<p class="empty-sub">Aucune information disponible.</p>');
+      const crmLink = data.crmUrl
+        ? `<a class="crm-link" href="${escapeHtml(data.crmUrl)}" target="_blank" rel="noopener">Voir la fiche sur Zoho CRM</a>`
+        : "";
+
+      const bodyHtml = dealsHtml + groupsHtml + crmLink;
+
+      animatePanelHeight(() => {
+        els.modalTitle.textContent = data.title || "Détails";
+        els.modalAvatar.textContent = initials(data.title);
+        if (data.subtitle) {
+          els.modalSubtitle.textContent = data.subtitle;
+          els.modalSubtitle.hidden = false;
+        }
+        setModalBody(bodyHtml || '<p class="empty-sub">Aucune information disponible.</p>');
+      });
     } catch (err) {
-      setModalBody(`<p class="empty-sub">Erreur : ${escapeHtml(err.message)}</p>`);
+      animatePanelHeight(() => {
+        setModalBody(`<p class="empty-sub">Erreur : ${escapeHtml(err.message)}</p>`);
+      });
     }
   }
+
+  els.modalBody.addEventListener("click", (e) => {
+    const card = e.target.closest(".deal-card");
+    if (!card) return;
+    const id = card.getAttribute("data-deal-id");
+    if (id) openDealDetail(id);
+  });
+  els.modalBack.addEventListener("click", closeDealDetail);
 
   els.modalClose.addEventListener("click", closeModal);
   els.modalOverlay.addEventListener("click", (e) => {
     if (e.target === els.modalOverlay) closeModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !els.modalOverlay.hidden) closeModal();
+    if (e.key !== "Escape" || els.modalOverlay.hidden) return;
+    if (els.modalPanel.classList.contains("is-deal")) closeDealDetail();
+    else closeModal();
   });
 
   // Charge la liste selon la vue courante

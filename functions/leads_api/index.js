@@ -90,11 +90,18 @@ async function crmRequest(path, query = {}) {
   return data;
 }
 
+// Construit l'URL de la fiche CRM pour un module et un id donnés (fallback sans
+// org : CRM résout souvent quand même).
+function buildCrmUrl(module, id) {
+  if (!id) return "";
+  return CRM_ORG_ID
+    ? `${CRM_BASE_URL}/crm/org${CRM_ORG_ID}/tab/${module}/${id}`
+    : `${CRM_BASE_URL}/crm/tab/${module}/${id}`;
+}
+
 function mapLead(record) {
   const id = record.id;
-  const crmUrl = CRM_ORG_ID
-    ? `${CRM_BASE_URL}/crm/org${CRM_ORG_ID}/tab/Leads/${id}`
-    : `${CRM_BASE_URL}/crm/tab/Leads/${id}`; // fallback sans org : CRM résout souvent quand même
+  const crmUrl = buildCrmUrl("Leads", id);
   return {
     id,
     crmUrl,
@@ -134,6 +141,12 @@ const DETAIL_LABELS = {
   Mailing_Country: "Pays",
   Created_Time: "Créé le",
   Modified_Time: "Modifié le",
+  Amount: "Montant",
+  Closing_Date: "Date de clôture",
+  Probability: "Probabilité",
+  Contact_Name: "Contact",
+  Type: "Type",
+  Reason_For_Loss__s: "Raison de perte",
 };
 
 const DETAIL_EXCLUDE = new Set([
@@ -189,6 +202,12 @@ const FIELD_GROUPS = {
   Description: "Suivi",
   Created_Time: "Suivi",
   Modified_Time: "Suivi",
+  Amount: "Suivi",
+  Closing_Date: "Suivi",
+  Probability: "Suivi",
+  Contact_Name: "Entreprise",
+  Type: "Suivi",
+  Reason_For_Loss__s: "Suivi",
 };
 
 // Transforme un enregistrement CRM brut en sections { name, fields: [{ label, value }] }
@@ -349,9 +368,11 @@ app.get("/leads/detail/:id", async (req, res) => {
       },
     );
     const record = (data && data.data && data.data[0]) || null;
+    const id = (record && record.id) || req.params.id;
     res.status(200).json({
       title: record ? record.Full_Name || record.Company || "Lead" : "Lead",
       subtitle: record ? record.Company || "" : "",
+      crmUrl: buildCrmUrl("Leads", id),
       groups: buildDetailGroups(record, { titleKey: "Full_Name", subtitleKey: "Company" }),
     });
   } catch (err) {
@@ -365,16 +386,45 @@ async function findDealsForContact(app, contactName) {
   const escaped = contactName.replace(/'/g, "''");
   const zcql = app.zcql();
   const rows = await zcql.executeZCQLQuery(
-    `SELECT Deal_Name, Stage, type, account_name, Reason_For_Loss FROM Deals_Cache WHERE contact_name = '${escaped}' LIMIT 50`,
+    `SELECT crm_id, Deal_Name, Stage, type, account_name, Reason_For_Loss FROM Deals_Cache WHERE contact_name = '${escaped}' LIMIT 50`,
   );
-  return rows.map((r) => ({
-    name: r.Deals_Cache.Deal_Name,
-    stage: r.Deals_Cache.Stage,
-    type: r.Deals_Cache.type,
-    accountName: r.Deals_Cache.account_name,
-    reasonForLoss: r.Deals_Cache.Reason_For_Loss,
-  }));
+  return rows.map((r) => {
+    const crmId = r.Deals_Cache.crm_id;
+    return {
+      id: crmId,
+      name: r.Deals_Cache.Deal_Name,
+      stage: r.Deals_Cache.Stage,
+      type: r.Deals_Cache.type,
+      accountName: r.Deals_Cache.account_name,
+      reasonForLoss: r.Deals_Cache.Reason_For_Loss,
+      crmUrl: buildCrmUrl("Deals", crmId),
+    };
+  });
 }
+
+// Détail affaire : appel CRM à la demande, affiché comme second volet de la popup
+app.get("/deals/detail/:id", async (req, res) => {
+  try {
+    const token = await getAccessToken();
+    const { data } = await axios.get(
+      `${API_HOST}/crm/v6/Deals/${req.params.id}`,
+      {
+        headers: { Authorization: `Zoho-oauthtoken ${token}` },
+      },
+    );
+    const record = (data && data.data && data.data[0]) || null;
+    const id = (record && record.id) || req.params.id;
+    const crmUrl = buildCrmUrl("Deals", id);
+    res.status(200).json({
+      title: record ? record.Deal_Name || "Affaire" : "Affaire",
+      subtitle: record ? record.Stage || "" : "",
+      crmUrl,
+      groups: buildDetailGroups(record, { titleKey: "Deal_Name", subtitleKey: "Stage" }),
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Erreur détail affaire CRM", detail: err.message });
+  }
+});
 
 // Détail contact : appel CRM à la demande (fiche fraîche) + deals associés (Data Store)
 app.get("/contacts/detail/:id", async (req, res) => {
@@ -387,12 +437,14 @@ app.get("/contacts/detail/:id", async (req, res) => {
       },
     );
     const record = (data && data.data && data.data[0]) || null;
+    const id = (record && record.id) || req.params.id;
     const subtitleKey = record && record.Title ? "Title" : "Account_Name";
     const app = catalyst.initialize(req);
     const deals = await findDealsForContact(app, record && record.Full_Name);
     res.status(200).json({
       title: record ? record.Full_Name || record.Account_Name || "Contact" : "Contact",
       subtitle: record ? record.Title || record.Account_Name || "" : "",
+      crmUrl: buildCrmUrl("Contacts", id),
       groups: buildDetailGroups(record, { titleKey: "Full_Name", subtitleKey }),
       deals,
     });
