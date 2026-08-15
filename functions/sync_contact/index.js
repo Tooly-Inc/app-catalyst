@@ -6,6 +6,17 @@ const ACCOUNTS_HOST =
   process.env.ZOHO_ACCOUNTS_HOST || "https://accounts.zoho.eu";
 const API_HOST = process.env.ZOHO_API_HOST || "https://www.zohoapis.eu";
 
+// La colonne crm_created_time/synced_at est en type datetime (voir Contacts_Cache) :
+// elle rejette l'ISO 8601 brut de Created_Time/toISOString() ("2024-03-15T10:22:31-04:00")
+// avec "Invalid input value ... datetime value expected". Même format que
+// sync_contacts_signal.
+function formatDateTime(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 async function getAccessToken() {
   const params = new URLSearchParams({
     refresh_token: process.env.ZOHO_REFRESH_TOKEN,
@@ -66,7 +77,7 @@ module.exports = async (cronDetails, context) => {
     });
 
     const table = app.datastore().table("Contacts_Cache");
-    const now = new Date().toISOString();
+    const now = formatDateTime(new Date());
     const toInsert = [],
       toUpdate = [];
 
@@ -81,7 +92,7 @@ module.exports = async (cronDetails, context) => {
         phone: rec.Phone || "",
         title: rec.Title || "",
         owner: rec.Owner ? rec.Owner.name : "",
-        crm_created_time: rec.Created_Time || "",
+        crm_created_time: formatDateTime(rec.Created_Time),
         synced_at: now,
       };
       if (idMap[rec.id]) {

@@ -14,15 +14,46 @@
   --magenta-n2: #840073;
 
   /* Turquoise (accent) */
-  --bleu-0: #00cece;
-  --bleu-1: #6ad9d9;
+  --bleu-3: #efffff;
   --bleu-2: #d4ffff;
+  --bleu-1: #6ad9d9;
+  --bleu-0: #00cece;
   --bleu-n1: #008687;
 
   /* Rouge (statuts / erreurs) */
+  --rouge-3: #fef2f0;
   --rouge-0: #ff482f;
   --rouge-n1: #ba301e;
+  --rouge-n2: #812418;
   --rouge-2: #ffd7d1;
+
+  /* Fixes quel que soit le thème : le turquoise et le rouge ci-dessus portent
+     un sens (statut, alerte), pas une préférence esthétique — un thème ne
+     doit jamais rendre un statut illisible ou en changer la signification. */
+  --on-brand: #ffffff; /* texte/icône posé directement sur le dégradé magenta ou un fond magenta-n1 plein */
+  --jaune-2: #fffbd2; /* réservé aux statuts (badge--s2) — le jaune officiel Tooly, indépendant du thème actif */
+  --jaune-n1: #6f6107;
+
+  /* Palette de statuts : 8 couleurs distinctes, attribuées automatiquement par
+     hash du texte du statut (voir statusBadgeClass en JS), figées quel que
+     soit le thème. Un même statut garde toujours la même couleur ; deux
+     statuts différents ont (presque) toujours des couleurs différentes. */
+  --status-0-bg: var(--bleu-2); /* turquoise — famille officielle Tooly */
+  --status-0-fg: var(--bleu-n1);
+  --status-1-bg: #ffd7d1; /* rouge — famille officielle Tooly */
+  --status-1-fg: #ba301e;
+  --status-2-bg: var(--jaune-2); /* jaune — famille officielle Tooly */
+  --status-2-fg: var(--jaune-n1);
+  --status-3-bg: #d9f2df; /* vert */
+  --status-3-fg: #1f7a3d;
+  --status-4-bg: #ecdcfa; /* violet */
+  --status-4-fg: #6b3fa0;
+  --status-5-bg: #ffe3c2; /* orange */
+  --status-5-fg: #8a4a00;
+  --status-6-bg: #ffdce8; /* rose */
+  --status-6-fg: #a3315c;
+  --status-7-bg: #e2e4e8; /* ardoise */
+  --status-7-fg: #4a525c;
 
   /* Neutres */
   --n7: #1d2124; /* le plus foncé, texte principal */
@@ -40,6 +71,102 @@
   --shadow: 0 2px 8px rgba(29, 33, 36, 0.06), 0 8px 28px rgba(29, 33, 36, 0.05);
   --shadow-lift:
     0 4px 12px rgba(29, 33, 36, 0.1), 0 16px 40px rgba(29, 33, 36, 0.08);
+}
+
+/* ============================================================
+   THÈMES — même rôles (magenta-*, n0-n7 pour les thèmes sombres), valeurs
+   différentes. Le turquoise (--bleu-*), le rouge (--rouge-*), le jaune de
+   statut (--jaune-*), la palette de statuts (--status-*) et --on-brand ne
+   sont JAMAIS redéfinis ici : les statuts et les alertes gardent toujours le
+   même sens, quel que soit le thème choisi. Jaune/Bleu/Rouge sont des
+   variantes officielles de la charte Tooly : même neutres, seul le rôle
+   magenta-* change (n0-n7 hérités du :root de base).
+   ============================================================ */
+:root[data-theme="jaune"] {
+  /* Variante officielle Tooly — jaune, optimisme et vivacité (guide de marque) */
+  --magenta-3: #fffff2;
+  --magenta-2: #fffbd2;
+  --magenta-1: #fff282;
+  --magenta-0: #ffe924;
+  --magenta-n1: #6f6107;
+  --magenta-n2: #4f4000;
+}
+
+:root[data-theme="bleu"] {
+  /* Variante officielle Tooly — bleu cyan, clarté et fiabilité (guide de marque) */
+  --magenta-3: #efffff;
+  --magenta-2: #d4ffff;
+  --magenta-1: #6ad9d9;
+  --magenta-0: #00cece;
+  --magenta-n1: #008687;
+  --magenta-n2: #005555;
+}
+
+:root[data-theme="rouge"] {
+  /* Variante officielle Tooly — rouge, passion et détermination (guide de marque) */
+  --magenta-3: #fef2f0;
+  --magenta-2: #ffd7d1;
+  --magenta-1: #ff9082;
+  --magenta-0: #ff482f;
+  --magenta-n1: #ba301e;
+  --magenta-n2: #812418;
+}
+
+:root[data-theme="macchiato"] {
+  /* Inspiré de Catppuccin Macchiato — doux, mauve, nocturne */
+  --magenta-3: #423a63;
+  --magenta-2: #3a3158;
+  --magenta-1: #dcc3fa;
+  --magenta-0: #c6a0f6;
+  --magenta-n1: #8839ef;
+  --magenta-n2: #6e3cb8;
+
+  --n0: #363a4f;
+  --n1: #24273a;
+  --n2: #494d64;
+  --n3: #8087a2;
+  --n4: #a5adcb;
+  --n5: #b8c0e0;
+  --n6: #cad3f5;
+  --n7: #eef0fc;
+}
+
+:root[data-theme="cappuccino"] {
+  /* Chaleureux, crème et caramel, comme un café du matin */
+  --magenta-3: #fbeee0;
+  --magenta-2: #f6ddc7;
+  --magenta-1: #eab088;
+  --magenta-0: #d97a3d;
+  --magenta-n1: #b5622b;
+  --magenta-n2: #7c3f18;
+
+  --n0: #fffaf3;
+  --n1: #f7ede1;
+  --n2: #e0cdb8;
+  --n3: #886948;
+  --n4: #75543a;
+  --n5: #5c3f2a;
+  --n6: #402c1c;
+  --n7: #2e1e13;
+}
+
+:root[data-theme="tokyo"] {
+  /* Inspiré de Tokyo Night — nocturne, bleu électrique */
+  --magenta-3: #2c3154;
+  --magenta-2: #262b45;
+  --magenta-1: #a9c1fa;
+  --magenta-0: #7aa2f7;
+  --magenta-n1: #3f59a8;
+  --magenta-n2: #4a3d8f;
+
+  --n0: #1a1b26;
+  --n1: #16161e;
+  --n2: #3b4261;
+  --n3: #8592bd;
+  --n4: #a0abd4;
+  --n5: #b8c0e6;
+  --n6: #c7cef2;
+  --n7: #e0e4fb;
 }
 
 * {
@@ -130,12 +257,12 @@ body {
   font-size: 25px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--n0);
+  color: var(--on-brand);
   line-height: 1.1;
 }
 .brand .subtitle {
   font-size: 13.5px;
-  color: var(--n0);
+  color: var(--on-brand);
   font-weight: 400;
   margin-top: 3px;
   opacity: 0.8;
@@ -224,6 +351,25 @@ body {
 .clear-btn:hover {
   color: var(--n7);
 }
+.search-kbd-hint {
+  position: absolute;
+  right: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--n3);
+  background: var(--n1);
+  border: 1.5px solid var(--n2);
+  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.search-kbd-hint:hover {
+  color: var(--n6);
+  border-color: var(--n3);
+}
 
 .filters {
   display: flex;
@@ -269,6 +415,14 @@ body {
 }
 .refresh-btn:active {
   transform: translateY(0);
+}
+
+.btn-create-deal {
+  background: var(--magenta-n1);
+  color: var(--on-brand);
+}
+.btn-create-deal:hover {
+  background: var(--magenta-n2);
 }
 
 /* ============================================================
@@ -329,23 +483,56 @@ body {
   transition: color 0.15s;
 }
 .lead-email a:hover {
-  color: var(--bleu-n1);
+  color: var(--magenta-n1);
   text-decoration: underline;
 }
 .muted {
   color: var(--n2);
 }
 
-/* Badge de statut — turquoise en accent */
+/* Badge de statut — une couleur par valeur (voir statusBadgeClass en JS),
+   figée quel que soit le thème actif : un statut doit rester identifiable. */
 .badge {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
-  background: var(--bleu-2);
-  color: var(--bleu-n1);
+  background: var(--status-0-bg);
+  color: var(--status-0-fg);
   white-space: nowrap;
+}
+.badge--s0 {
+  background: var(--status-0-bg);
+  color: var(--status-0-fg);
+}
+.badge--s1 {
+  background: var(--status-1-bg);
+  color: var(--status-1-fg);
+}
+.badge--s2 {
+  background: var(--status-2-bg);
+  color: var(--status-2-fg);
+}
+.badge--s3 {
+  background: var(--status-3-bg);
+  color: var(--status-3-fg);
+}
+.badge--s4 {
+  background: var(--status-4-bg);
+  color: var(--status-4-fg);
+}
+.badge--s5 {
+  background: var(--status-5-bg);
+  color: var(--status-5-fg);
+}
+.badge--s6 {
+  background: var(--status-6-bg);
+  color: var(--status-6-fg);
+}
+.badge--s7 {
+  background: var(--status-7-bg);
+  color: var(--status-7-fg);
 }
 
 /* ============================================================
@@ -391,53 +578,6 @@ body {
   }
 }
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-@media (max-width: 620px) {
-  .app {
-    padding: 18px 14px 40px;
-  }
-  .hero {
-    padding: 24px 22px;
-  }
-  .hero-top {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .brand h1 {
-    font-size: 22px;
-  }
-  .leads-table thead {
-    display: none;
-  }
-  .leads-table,
-  .leads-table tbody,
-  .leads-table tr,
-  .leads-table td {
-    display: block;
-    width: 100%;
-  }
-  .leads-table tbody tr {
-    padding: 10px 4px;
-    border-bottom: 1px solid var(--n1);
-  }
-  .leads-table tbody td {
-    border: none;
-    padding: 5px 22px;
-  }
-  .leads-table tbody td::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--n3);
-    margin-bottom: 1px;
-  }
-}
-
 .view-toggle {
   display: inline-flex;
   background: rgba(255, 255, 255, 0.16);
@@ -452,7 +592,7 @@ body {
   font: inherit;
   font-weight: 500;
   font-size: 13px;
-  color: var(--n0);
+  color: var(--on-brand);
   opacity: 0.8;
   padding: 7px 18px;
   border-radius: 999px;
@@ -520,15 +660,49 @@ body {
     max-height 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
     height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+/* Fermeture façon "extinction de vieille télé" : un écrasement vertical
+   rapide (avec un léger rebond horizontal, pour rester dans l'esprit bounce
+   du reste de l'app) jusqu'à une fine ligne, puis un écrasement horizontal
+   qui referme cette ligne en s'effaçant. Remplace la transition normale
+   (voir closeModal en JS, qui bascule sur cette classe plutôt que de
+   retirer .is-open directement sur le panneau). */
+@keyframes modalTvOff {
+  0% {
+    transform: scale(1, 1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1.08, 0.025);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0, 0.025);
+    opacity: 0;
+  }
+}
+.modal-panel.is-closing {
+  transition: none;
+  animation: modalTvOff 0.5s cubic-bezier(0.5, 0, 0.75, 0.35) forwards;
+}
 /* Format "bureau" pris quand la fiche affaire s'ouvre dans la popup */
 .modal-panel.is-deal {
   max-width: 760px;
   max-height: 90vh;
 }
+/* Le panneau de remarques (voir .activity-panel) prolonge la popup de sa
+   propre largeur au lieu de la recouvrir : la popup bounce plus large pendant
+   que le panneau glisse dans l'espace ainsi créé, sur sa droite. */
+.modal-panel.is-activity {
+  max-width: 780px;
+}
+.modal-panel.is-deal.is-activity {
+  max-width: 1120px;
+}
 
 /* Piste à deux volets (fiche principale / fiche affaire) qui glisse horizontalement */
 .modal-views {
   display: flex;
+  align-items: flex-start; /* les deux volets ne doivent pas s'étirer l'un l'autre en hauteur */
   width: 200%;
   flex: 1 1 auto;
   min-height: 0;
@@ -543,6 +717,39 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* Cap indépendant de la hauteur du panneau (voir .modal-panel) : comme
+     align-items:flex-start empêche les deux volets de s'étirer l'un l'autre,
+     chacun doit porter sa propre limite pour que modal-body puisse défiler en
+     interne plutôt que de déborder, invisible, derrière overflow:hidden. */
+  max-height: 85vh;
+  overflow: hidden;
+}
+.modal-panel.is-deal .modal-view {
+  max-height: 90vh;
+}
+
+/* Panneau des remarques et de l'activité : un prolongement de la popup (voir
+   .modal-panel.is-activity), pas une vue qui la recouvre — il occupe la bande
+   ajoutée sur la droite et y glisse pendant que la popup bounce plus large. */
+.activity-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 360px;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--n0);
+  border-left: 1px solid var(--n1);
+  transform: translateX(100%);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+}
+.activity-panel:not([hidden]) {
+  display: flex;
+}
+.activity-panel.is-open {
+  transform: translateX(0);
 }
 
 .modal-back {
@@ -588,11 +795,11 @@ body {
 }
 .modal-avatar {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--magenta-n1), var(--magenta-n2));
-  color: var(--n0);
+  color: var(--on-brand);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -636,14 +843,39 @@ body {
   color: var(--n7);
 }
 .modal-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 4px 24px 22px;
   overflow-y: auto;
 }
+/* Fondu en bas de la zone de contenu, pour suggérer qu'on peut défiler — n'
+   apparaît que s'il reste du contenu sous le pli (voir initScrollFade en JS),
+   sinon il recouvrirait en permanence le dernier champ une fois arrivé en bas. */
+.modal-body::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 32px;
+  background: linear-gradient(to top, var(--n0), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.modal-body.has-more-below::after {
+  opacity: 1;
+}
+
 .detail-group + .detail-group {
   margin-top: 6px;
   border-top: 1px solid var(--n1);
 }
 .detail-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -651,12 +883,83 @@ body {
   color: var(--n3);
   padding: 18px 0 4px;
 }
+.detail-group {
+  border-radius: 6px;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+}
+.detail-group.is-dragging {
+  opacity: 0.4;
+}
+.detail-group.drag-over-top {
+  border-top-color: var(--magenta-n1);
+}
+.detail-group.drag-over-bottom {
+  border-bottom-color: var(--magenta-n1);
+}
+.detail-group-drag-handle {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0;
+  cursor: grab;
+  padding: 6px;
+  margin: -6px;
+  touch-action: none;
+  transition: opacity 0.15s ease;
+}
+.detail-group:hover .detail-group-drag-handle {
+  opacity: 1;
+}
+/* Pas de :hover fiable au doigt — sans ça, la pastille de section reste
+   invisible en permanence sur mobile. */
+@media (hover: none) {
+  .detail-group-drag-handle {
+    opacity: 1;
+  }
+}
 .detail-row {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-  gap: 16px;
-  padding: 7px 0;
+  gap: 10px;
+  padding: 7px 2px 7px 4px;
+  border-radius: 6px;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+}
+.detail-row:hover {
+  background: var(--n1);
+}
+.detail-row.is-dragging {
+  opacity: 0.4;
+}
+.detail-row.drag-over-top {
+  border-top-color: var(--magenta-n1);
+}
+.detail-row.drag-over-bottom {
+  border-bottom-color: var(--magenta-n1);
+}
+.detail-drag-handle {
+  flex-shrink: 0;
+  color: var(--n2);
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0;
+  cursor: grab;
+  padding: 6px;
+  margin: -6px;
+  touch-action: none;
+  transition: opacity 0.15s ease;
+}
+.detail-row:hover .detail-drag-handle {
+  opacity: 1;
+}
+/* Pas de :hover fiable au doigt — sans ça, la pastille de champ reste
+   invisible en permanence sur mobile. */
+@media (hover: none) {
+  .detail-drag-handle {
+    opacity: 1;
+  }
 }
 .detail-label {
   font-size: 12.5px;
@@ -669,6 +972,62 @@ body {
   color: var(--n7);
   text-align: right;
   word-break: break-word;
+  margin-left: auto;
+}
+/* Barre de disposition : ancrée tout en haut du corps de la fiche (avant même
+   le rappel de deal), loin du panneau de remarques plus bas dans le contenu. */
+.detail-order-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--n1);
+}
+.detail-layout-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--n5);
+  background: var(--n1);
+  border: 1px solid var(--n2);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.detail-order-icon-btn {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  background: var(--n1);
+  border: 1px solid var(--n2);
+  border-radius: var(--radius-sm);
+  color: var(--n4);
+  cursor: pointer;
+  padding: 5px 8px;
+}
+.detail-order-icon-btn:hover {
+  color: var(--magenta-n1);
+  border-color: var(--magenta-2);
+}
+
+/* --- Boîte de dialogue générique (confirmation / saisie) --- */
+.mini-dialog-message {
+  font-size: 13.5px;
+  color: var(--n5);
+  line-height: 1.5;
+}
+#miniDialogInput {
+  margin-top: 12px;
+}
+.btn--danger {
+  background: var(--rouge-n1);
+  color: var(--on-brand);
+}
+.btn--danger:hover:not(:disabled) {
+  background: var(--rouge-n2);
 }
 
 .deal-card {
@@ -689,6 +1048,23 @@ body {
   background: var(--magenta-3);
 }
 
+/* Rappel du deal en haut de la fiche compacte : accent couleur principale ;
+   le fond suit le thème pour que le texte à l'intérieur (thémé) reste
+   toujours lisible. */
+.deal-card--recap {
+  background: var(--n1);
+  border: 1.5px solid var(--magenta-2);
+  border-radius: var(--radius);
+  margin-top: 0;
+}
+.deal-card--recap:hover,
+.deal-card--recap:focus-visible {
+  background: var(--magenta-3);
+}
+.deal-card--recap + .deal-card--recap {
+  margin-top: 10px;
+}
+
 .crm-link {
   display: inline-flex;
   align-items: center;
@@ -697,7 +1073,7 @@ body {
   padding: 9px 16px;
   border-radius: var(--radius-sm);
   background: var(--magenta-n1);
-  color: var(--n0);
+  color: var(--on-brand);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -731,6 +1107,720 @@ body {
   margin-top: 4px;
 }
 
+/* ============================================================
+   PIED DE FICHE — actions du volet affaire
+   ============================================================ */
+.modal-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  background: var(--n1);
+  border-top: 1.5px solid var(--n1);
+}
+.modal-footer:empty {
+  display: none;
+}
+.modal-footer-flex {
+  flex: 1;
+}
+.modal-footer-hint {
+  font-size: 12px;
+  color: var(--n4);
+}
+.modal-footer-hint--warn {
+  color: var(--rouge-n1);
+  font-weight: 600;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+.btn--sm {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.btn--primary {
+  background: var(--magenta-n1);
+  color: var(--on-brand);
+}
+.btn--primary:hover:not(:disabled) {
+  background: var(--magenta-n2);
+}
+.btn--outline {
+  background: none;
+  border: 1.5px solid var(--n2);
+  color: var(--n5);
+}
+.btn--outline:hover {
+  border-color: var(--n3);
+  color: var(--n7);
+}
+.btn--ghost {
+  background: none;
+  color: var(--n4);
+}
+.btn--ghost:hover {
+  color: var(--n7);
+}
+.btn--secondary {
+  background: var(--status-3-bg);
+  color: var(--status-3-fg);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ============================================================
+   RAPPEL DE DEAL — sous-grille montant / clôture / prochaine étape
+   ============================================================ */
+.deal-recap-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--n2);
+}
+.deal-recap-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.deal-recap-label {
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--n3);
+  font-weight: 600;
+}
+.deal-recap-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--n7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Bouton qui ouvre le panneau des remarques et de l'activité (voir .activity-panel) */
+.activity-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 11px 14px;
+  background: var(--n1);
+  border: none;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--n6);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.activity-trigger:hover {
+  background: var(--magenta-3);
+}
+.activity-trigger-count {
+  flex-shrink: 0;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--n2);
+  color: var(--n6);
+  font-size: 11.5px;
+  text-align: center;
+}
+.activity-trigger::after {
+  content: "›";
+  margin-left: auto;
+  color: var(--n3);
+  font-size: 16px;
+}
+
+/* ============================================================
+   FIL D'ACTIVITÉ + COMPOSEUR DE REMARQUE
+   ============================================================ */
+.activity-section {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.activity-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.activity-heading span:first-child {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--n3);
+  font-weight: 600;
+}
+.activity-heading-line {
+  flex: 1;
+  height: 1.5px;
+  background: var(--n1);
+}
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.activity-empty {
+  font-size: 13px;
+  color: var(--n3);
+}
+.activity-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+}
+.activity-entry--pending {
+  opacity: 0.6;
+}
+.activity-pill {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--n4);
+  background: var(--n1);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.activity-pill--stage {
+  color: var(--on-brand);
+  background: var(--magenta-n1);
+}
+.activity-pill--task {
+  color: var(--status-5-fg);
+  background: var(--status-5-bg);
+}
+.activity-text {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--n5);
+}
+.activity-date {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--n3);
+}
+
+.note-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--n2);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  margin-top: 12px;
+}
+.note-composer:focus-within {
+  border-color: var(--magenta-n1);
+  box-shadow: 0 0 0 3px var(--magenta-2);
+}
+.note-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: 13.5px;
+  background: none;
+  color: var(--n7);
+}
+.note-input::placeholder {
+  color: var(--n3);
+}
+.note-send {
+  border: none;
+  background: none;
+  color: var(--magenta-n1);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.note-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.note-error {
+  font-size: 12px;
+  color: var(--rouge-n1);
+  margin-top: 6px;
+}
+
+/* ============================================================
+   MISE À JOUR RAPIDE — étapes, champs, encart de perte
+   ============================================================ */
+.qu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.qu-label {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--n3);
+  font-weight: 600;
+}
+.stage-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.stage-pill {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--n3);
+  background: none;
+  border: 1.5px solid var(--n2);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.stage-pill--current {
+  border-style: dashed;
+  border-color: var(--n3);
+  color: var(--n4);
+  font-weight: 600;
+}
+.stage-pill--selected {
+  background: var(--magenta-n1);
+  border-color: var(--magenta-n1);
+  color: var(--on-brand);
+  font-weight: 600;
+}
+.qu-row {
+  display: flex;
+  gap: 14px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.qu-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 140px;
+}
+.qu-field--grow {
+  flex: 1;
+  min-width: 160px;
+}
+.qu-input {
+  padding: 9px 12px;
+  border: 1.5px solid var(--n2);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--n7);
+  background: var(--n0);
+}
+.qu-input:focus {
+  outline: none;
+  border-color: var(--magenta-n1);
+  box-shadow: 0 0 0 3px var(--magenta-2);
+}
+.qu-chain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 13.5px;
+  color: var(--n5);
+  cursor: pointer;
+}
+.loss-panel {
+  margin-top: 16px;
+  background: var(--rouge-3);
+  border: 1.5px solid var(--rouge-2);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.loss-warning {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rouge-n2);
+}
+
+/* ============================================================
+   NOTIFICATIONS DE CONFIRMATION — en haut de la page
+   ============================================================ */
+.toast-stack {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  max-width: calc(100vw - 40px);
+  background: var(--n7);
+  color: var(--n0);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-lift);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================
+   BANDEAU DE RELANCE — annulation temporaire
+   ============================================================ */
+.relance-toast {
+  flex-shrink: 0;
+  align-items: center;
+  gap: 14px;
+  margin: 0 24px 14px;
+  background: var(--n7);
+  color: var(--n0);
+  border-radius: 999px;
+  padding: 10px 10px 10px 18px;
+  font-size: 13.5px;
+  box-shadow: var(--shadow-lift);
+}
+.relance-toast:not([hidden]) {
+  display: flex;
+}
+.relance-toast-undo {
+  flex-shrink: 0;
+  border: none;
+  background: var(--magenta-n1);
+  color: var(--on-brand);
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   RECHERCHE GLOBALE — liste déroulante ancrée à la barre de recherche
+   ============================================================ */
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--n0);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  padding: 8px 0;
+  z-index: 20;
+}
+.search-dropdown:not([hidden]) {
+  display: block;
+}
+.palette-group-label {
+  padding: 10px 20px 6px;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--n3);
+  font-weight: 600;
+}
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+.palette-row.is-active,
+.palette-row:hover {
+  background: var(--magenta-3);
+}
+.palette-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.palette-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--n7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-row-meta {
+  font-size: 12px;
+  color: var(--n4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-empty {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--n3);
+  font-size: 13.5px;
+}
+
+/* ============================================================
+   CRÉATION RAPIDE DE DEAL
+   ============================================================ */
+.dc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 16px;
+  position: relative;
+}
+.dc-field:first-child {
+  margin-top: 4px;
+}
+.dc-contact-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--n0);
+  border: 1.5px solid var(--n1);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 5;
+}
+.dc-contact-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+.dc-contact-option:hover {
+  background: var(--magenta-3);
+}
+.dc-contact-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--magenta-2);
+  background: var(--n1);
+  border-radius: var(--radius-sm);
+}
+.dc-contact-clear {
+  flex-shrink: 0;
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--n4);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.dc-contact-clear:hover {
+  color: var(--n7);
+}
+
+/* ============================================================
+   MENU + TIROIR DE THÈME
+   ============================================================ */
+.menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--on-brand);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.menu-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(29, 33, 36, 0.4);
+  align-items: stretch;
+  justify-content: flex-end;
+  z-index: 120;
+}
+.drawer-overlay:not([hidden]) {
+  display: flex;
+}
+.drawer-panel {
+  width: 100%;
+  max-width: 360px;
+  background: var(--n0);
+  box-shadow: var(--shadow-lift);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.drawer-overlay.is-open .drawer-panel {
+  transform: translateX(0);
+}
+.drawer-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 22px 24px 16px;
+  border-bottom: 1.5px solid var(--n1);
+  flex-shrink: 0;
+}
+.drawer-header h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--n7);
+}
+.drawer-body {
+  padding: 20px 24px 28px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.drawer-section-title {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--n3);
+  font-weight: 700;
+}
+.drawer-section-sub {
+  font-size: 13px;
+  color: var(--n4);
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
+.theme-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--n1);
+  border-radius: var(--radius);
+  background: var(--n0);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.theme-card:hover {
+  border-color: var(--n2);
+}
+.theme-card.is-active {
+  border-color: var(--magenta-n1);
+  background: var(--magenta-3);
+}
+.theme-swatch {
+  display: flex;
+  flex-shrink: 0;
+}
+.theme-swatch span {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  margin-left: -6px;
+}
+.theme-swatch span:first-child {
+  margin-left: 0;
+}
+.theme-card-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.theme-card-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--n7);
+}
+.theme-card-tagline {
+  font-size: 12px;
+  color: var(--n4);
+}
+.theme-card-check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--n2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: transparent;
+}
+.theme-card.is-active .theme-card-check {
+  border-color: var(--magenta-n1);
+  background: var(--magenta-n1);
+  color: var(--on-brand);
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -749,5 +1839,144 @@ body {
   * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — smartphones modernes (iPhone 16, OnePlus 15, etc.)
+   Volontairement en toute fin de fichier : à spécificité égale, une règle
+   plus tardive dans le fichier l'emporte sur une règle antérieure, même sous
+   une media query vraie. Beaucoup des règles ci-dessous surchargent des
+   classes définies plus haut (modal, activity-panel, menu-btn…) — les placer
+   ailleurs les ferait perdre silencieusement ce bras de fer de cascade.
+   ============================================================ */
+@media (max-width: 620px) {
+  /* Indispensable au geste d'ouverture du menu (voir app.js) : par défaut
+     (touch-action: auto), dès qu'un balayage a la moindre composante
+     verticale, le navigateur décide unilatéralement qu'il s'agit d'un défilement
+     natif et annule la séquence de pointer events (pointercancel) avant même
+     que le JS n'atteigne son seuil d'ouverture — le balayage semblait donc ne
+     "rien faire". En ne cédant que le pan vertical (et le pincement-zoom) au
+     navigateur, le pan horizontal reste entièrement piloté par le script,
+     sans interruption. */
+  html,
+  body {
+    touch-action: pan-y pinch-zoom;
+  }
+  .app {
+    padding: 18px 14px 40px;
+  }
+  .hero {
+    padding: 24px 22px;
+  }
+  /* Le pictogramme et le burger sont retirés du bandeau mobile — faute de
+     place pour les deux à côté du titre. Le menu s'ouvre désormais par un
+     balayage vers la droite depuis le bord gauche de l'écran (voir le
+     gestionnaire de swipe dans app.js, actif uniquement sous 620px). */
+  .hero-top {
+    align-items: flex-start;
+  }
+  .brand {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .brand h1 {
+    font-size: 20px;
+  }
+  .logo-picto {
+    display: none;
+  }
+  .menu-btn {
+    display: none;
+  }
+  .view-toggle {
+    order: 1;
+    flex: 1 0 100%;
+  }
+  .hero-stat {
+    order: 2;
+  }
+  .leads-table thead {
+    display: none;
+  }
+  .leads-table,
+  .leads-table tbody,
+  .leads-table tr,
+  .leads-table td {
+    display: block;
+    width: 100%;
+  }
+  .leads-table tbody tr {
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--n1);
+  }
+  .leads-table tbody td {
+    border: none;
+    padding: 5px 22px;
+  }
+  .leads-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--n3);
+    margin-bottom: 1px;
+  }
+
+  /* Barre d'outils : la recherche peut se réduire sous son min-width bureau,
+     et les filtres passent à la ligne plutôt que de déborder horizontalement. */
+  .search-wrap {
+    min-width: 0;
+  }
+  .filters {
+    flex-wrap: wrap;
+  }
+  /* Raccourci clavier sans objet sur un écran tactile. */
+  .search-kbd-hint {
+    display: none;
+  }
+
+  /* Popup de détail : marges/paddings resserrés pour laisser le maximum de
+     largeur utile au contenu sur un écran de téléphone. */
+  .modal-overlay {
+    padding: 10px;
+  }
+  .modal-header {
+    padding: 22px 20px 14px;
+  }
+  .modal-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+  }
+  .modal-header h2 {
+    font-size: 16px;
+  }
+  .modal-body {
+    padding: 4px 16px 18px;
+  }
+  .modal-footer {
+    padding: 12px 16px;
+  }
+
+  /* Le panneau de remarques prolonge la popup sur sa propre largeur fixe
+     (360px) côté bureau — sur un téléphone, il n'y a pas la place d'étendre
+     la popup : il occupe donc toute la largeur disponible, comme un volet qui
+     remplace la fiche plutôt que de la prolonger. */
+  .activity-panel {
+    width: 100%;
+  }
+
+  /* 3 colonnes serrées deviennent illisibles sous ~350px de large. */
+  .deal-recap-grid {
+    grid-template-columns: 1fr;
+  }
+  /* Un champ à largeur fixe (140px) qui passe seul à la ligne (voir
+     flex-wrap sur .qu-row) a l'air orphelin : autant qu'il prenne toute la
+     largeur disponible. */
+  .qu-field {
+    width: 100%;
   }
 }

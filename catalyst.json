@@ -5,7 +5,8 @@
       "sync_leads",
       "test_function",
       "sync_contact",
-      "sync_deals"
+      "sync_deals",
+      "sync_contacts_signal"
     ],
     "source": "functions",
     "ignore": []

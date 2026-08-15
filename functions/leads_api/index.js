@@ -90,6 +90,99 @@ async function crmRequest(path, query = {}) {
   return data;
 }
 
+// Appel d'écriture générique (PUT/POST/DELETE) — crmRequest ne fait que du GET.
+async function crmWrite(method, path, body) {
+  const token = await getAccessToken();
+  const { data } = await axios({
+    method,
+    url: `${API_HOST}${path}`,
+    data: body,
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+      "Content-Type": "application/json",
+    },
+    validateStatus: (s) => s < 500,
+  });
+  return data;
+}
+
+// Vérifie qu'un appel d'écriture Zoho CRM (data[0].status === "success") a réussi ;
+// sinon relaie le message d'erreur du CRM plutôt qu'un succès trompeur.
+function assertCrmWriteOk(data, fallbackMessage) {
+  const entry = data && Array.isArray(data.data) && data.data[0];
+  if (!entry || entry.status !== "success") {
+    const detail = (entry && entry.message) || JSON.stringify(data);
+    throw new Error(`${fallbackMessage} : ${detail}`);
+  }
+  return entry;
+}
+
+// +n jours ouvrables (saute samedi/dimanche), à partir de maintenant.
+function addBusinessDays(n) {
+  const d = new Date();
+  let added = 0;
+  while (added < n) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return d;
+}
+
+// Crée une tâche de relance CRM pour un deal (échéance : +3 jours ouvrables,
+// liée au deal et, si connu, au contact). Utilisée par la route dédiée et par
+// l'enchaînement optionnel depuis la mise à jour rapide.
+async function createRelance(dealId, dealRecord) {
+  const contactId = dealRecord.Contact_Name && dealRecord.Contact_Name.id;
+  const contactName = dealRecord.Contact_Name && dealRecord.Contact_Name.name;
+  const ownerId = dealRecord.Owner && dealRecord.Owner.id;
+  const dealName = dealRecord.Deal_Name || "cette affaire";
+  const dueDate = addBusinessDays(3);
+  const subject = contactName
+    ? `Relancer ${contactName} — ${dealName}`
+    : `Relancer — ${dealName}`;
+
+  const task = {
+    Subject: subject,
+    Due_Date: dueDate.toISOString().slice(0, 10),
+    What_Id: dealId,
+    $se_module: "Deals",
+  };
+  if (contactId) task.Who_Id = contactId;
+  if (ownerId) task.Owner = { id: ownerId };
+
+  const data = await crmWrite("POST", "/crm/v6/Tasks", { data: [task] });
+  const entry = assertCrmWriteOk(data, "Échec de la création de la relance");
+  return {
+    id: entry.details && entry.details.id,
+    dueDate: task.Due_Date,
+    subject,
+  };
+}
+
+// Récupère et met en cache (~1h) les valeurs réelles des picklists Stage et
+// Reason_For_Loss__s : le pipeline et les raisons de perte sont propres à
+// chaque org CRM, on ne peut pas les coder en dur.
+let cachedDealsMeta = null;
+let cachedDealsMetaExpiry = 0;
+async function getDealsMeta() {
+  const now = Date.now();
+  if (cachedDealsMeta && now < cachedDealsMetaExpiry) return cachedDealsMeta;
+  const data = await crmRequest("/crm/v6/settings/fields", { module: "Deals" });
+  const fields = (data && data.fields) || [];
+  const pick = (apiName) => {
+    const f = fields.find((x) => x.api_name === apiName);
+    const values = (f && f.pick_list_values) || [];
+    return values
+      .slice()
+      .sort((a, b) => (a.sequence_number || 0) - (b.sequence_number || 0))
+      .map((v) => ({ value: v.actual_value, label: v.display_value || v.actual_value }));
+  };
+  cachedDealsMeta = { stages: pick("Stage"), reasons: pick("Reason_For_Loss__s") };
+  cachedDealsMetaExpiry = now + 60 * 60 * 1000;
+  return cachedDealsMeta;
+}
+
 // Construit l'URL de la fiche CRM pour un module et un id donnés (fallback sans
 // org : CRM résout souvent quand même).
 function buildCrmUrl(module, id) {
@@ -147,6 +240,7 @@ const DETAIL_LABELS = {
   Contact_Name: "Contact",
   Type: "Type",
   Reason_For_Loss__s: "Raison de perte",
+  Next_Step: "Prochaine étape",
 };
 
 const DETAIL_EXCLUDE = new Set([
@@ -208,6 +302,7 @@ const FIELD_GROUPS = {
   Contact_Name: "Entreprise",
   Type: "Suivi",
   Reason_For_Loss__s: "Suivi",
+  Next_Step: "Suivi",
 };
 
 // Transforme un enregistrement CRM brut en sections { name, fields: [{ label, value }] }
@@ -386,7 +481,7 @@ async function findDealsForContact(app, contactName) {
   const escaped = contactName.replace(/'/g, "''");
   const zcql = app.zcql();
   const rows = await zcql.executeZCQLQuery(
-    `SELECT crm_id, Deal_Name, Stage, type, account_name, Reason_For_Loss FROM Deals_Cache WHERE contact_name = '${escaped}' LIMIT 50`,
+    `SELECT crm_id, Deal_Name, Stage, type, account_name, Reason_For_Loss, amount, closing_date, next_step FROM Deals_Cache WHERE contact_name = '${escaped}' LIMIT 50`,
   );
   return rows.map((r) => {
     const crmId = r.Deals_Cache.crm_id;
@@ -397,32 +492,302 @@ async function findDealsForContact(app, contactName) {
       type: r.Deals_Cache.type,
       accountName: r.Deals_Cache.account_name,
       reasonForLoss: r.Deals_Cache.Reason_For_Loss,
+      amount: r.Deals_Cache.amount,
+      closingDate: r.Deals_Cache.closing_date,
+      nextStep: r.Deals_Cache.next_step,
       crmUrl: buildCrmUrl("Deals", crmId),
     };
   });
 }
 
+// Forme de réponse partagée entre /deals/detail/:id et PATCH /deals/:id : les
+// champs bruts (stage/amount/nextStep/reasonForLoss) permettent au formulaire
+// de mise à jour rapide de démarrer sans reparser le texte déjà formaté des
+// groupes de détail.
+function buildDealDetail(record, id) {
+  return {
+    title: record ? record.Deal_Name || "Affaire" : "Affaire",
+    subtitle: record ? record.Stage || "" : "",
+    stage: record ? record.Stage || "" : "",
+    amount: record && record.Amount != null ? record.Amount : null,
+    nextStep: record ? record.Next_Step || "" : "",
+    reasonForLoss: record ? record.Reason_For_Loss__s || "" : "",
+    crmUrl: buildCrmUrl("Deals", id),
+    groups: buildDetailGroups(record, { titleKey: "Deal_Name", subtitleKey: "Stage" }),
+  };
+}
+
 // Détail affaire : appel CRM à la demande, affiché comme second volet de la popup
 app.get("/deals/detail/:id", async (req, res) => {
   try {
-    const token = await getAccessToken();
-    const { data } = await axios.get(
-      `${API_HOST}/crm/v6/Deals/${req.params.id}`,
-      {
-        headers: { Authorization: `Zoho-oauthtoken ${token}` },
-      },
-    );
+    const data = await crmRequest(`/crm/v6/Deals/${req.params.id}`);
     const record = (data && data.data && data.data[0]) || null;
     const id = (record && record.id) || req.params.id;
-    const crmUrl = buildCrmUrl("Deals", id);
-    res.status(200).json({
-      title: record ? record.Deal_Name || "Affaire" : "Affaire",
-      subtitle: record ? record.Stage || "" : "",
-      crmUrl,
-      groups: buildDetailGroups(record, { titleKey: "Deal_Name", subtitleKey: "Stage" }),
-    });
+    res.status(200).json(buildDealDetail(record, id));
   } catch (err) {
     res.status(500).json({ error: "Erreur détail affaire CRM", detail: err.message });
+  }
+});
+
+// Métadonnées deals : pipeline (Stage) et raisons de perte réels de l'org.
+app.get("/deals/meta", async (_req, res) => {
+  try {
+    const meta = await getDealsMeta();
+    res.status(200).json(meta);
+  } catch (err) {
+    res.status(500).json({ error: "Erreur métadonnées deals", detail: err.message });
+  }
+});
+
+// Création rapide d'un deal (fiche simplifiée), lié à un contact existant.
+app.post("/deals", async (req, res) => {
+  try {
+    const { contactId, dealName, stage, amount, nextStep } = req.body || {};
+    if (!contactId || !dealName || !dealName.trim()) {
+      return res.status(400).json({ error: "Paramètres 'contactId' et 'dealName' requis." });
+    }
+
+    // Récupère le contact en direct : Account_Name (souvent obligatoire pour un
+    // deal) n'est pas dans Contacts_Cache, et Full_Name sert au cache local.
+    const contactData = await crmRequest(`/crm/v6/Contacts/${contactId}`);
+    const contactRecord = (contactData && contactData.data && contactData.data[0]) || {};
+    const account = contactRecord.Account_Name;
+
+    const fields = { Deal_Name: dealName.trim(), Contact_Name: { id: contactId } };
+    if (account && account.id) fields.Account_Name = { id: account.id };
+    if (stage) fields.Stage = stage;
+    if (amount !== undefined && amount !== "") fields.Amount = Number(amount);
+    if (nextStep) fields.Next_Step = nextStep;
+
+    const data = await crmWrite("POST", "/crm/v6/Deals", { data: [fields] });
+    const entry = assertCrmWriteOk(data, "Échec de la création du deal");
+    const dealId = entry.details && entry.details.id;
+
+    // Cache best-effort : le deal apparaît tout de suite dans la recherche et
+    // le rappel, sans attendre le prochain cron sync_deals.
+    try {
+      const catalystApp = catalyst.initialize(req);
+      await catalystApp.datastore().table("Deals_Cache").insertRows([
+        {
+          crm_id: dealId,
+          Deal_Name: dealName.trim(),
+          Stage: stage || "",
+          contact_name: contactRecord.Full_Name || "",
+          account_name: account ? account.name || "" : "",
+          type: "",
+          Reason_For_Loss: "",
+          amount: amount !== undefined && amount !== "" ? Number(amount) : null,
+          closing_date: null,
+          next_step: nextStep || "",
+        },
+      ]);
+    } catch (cacheErr) {
+      console.error("Cache Deals_Cache non alimenté à la création:", cacheErr.message);
+    }
+
+    res.status(200).json({ id: dealId });
+  } catch (err) {
+    console.error("POST /deals error:", err.message);
+    res.status(500).json({ error: "Erreur création deal", detail: err.message });
+  }
+});
+
+// Mise à jour rapide d'un deal : étape, montant, prochaine étape, raison de
+// perte. Trace le changement d'étape par une note automatique et peut
+// enchaîner la création d'une relance.
+app.patch("/deals/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const { stage, amount, nextStep, reasonForLoss, chainFollowUp } = req.body || {};
+
+    const before = await crmRequest(`/crm/v6/Deals/${id}`);
+    const beforeRecord = (before && before.data && before.data[0]) || {};
+    const previousStage = beforeRecord.Stage || "";
+
+    const fields = {};
+    if (stage !== undefined) fields.Stage = stage;
+    if (amount !== undefined) fields.Amount = amount === "" ? null : Number(amount);
+    if (nextStep !== undefined) fields.Next_Step = nextStep;
+    if (reasonForLoss !== undefined) fields.Reason_For_Loss__s = reasonForLoss;
+
+    if (Object.keys(fields).length) {
+      const updateData = await crmWrite("PUT", "/crm/v6/Deals", {
+        data: [{ id, ...fields }],
+      });
+      assertCrmWriteOk(updateData, "Échec de la mise à jour du deal");
+    }
+
+    if (stage !== undefined && stage !== previousStage) {
+      try {
+        await crmWrite("POST", `/crm/v6/Deals/${id}/Notes`, {
+          data: [{ Note_Content: `Étape : ${previousStage || "—"} → ${stage}` }],
+        });
+      } catch (noteErr) {
+        console.error("Note auto étape non créée:", noteErr.message);
+      }
+    }
+
+    let relance = null;
+    if (chainFollowUp) {
+      try {
+        relance = await createRelance(id, { ...beforeRecord, ...fields });
+      } catch (relanceErr) {
+        console.error("Relance enchaînée non créée:", relanceErr.message);
+      }
+    }
+
+    // Cache Data Store : best-effort, ne doit jamais faire échouer la requête.
+    try {
+      const catalystApp = catalyst.initialize(req);
+      const zcql = catalystApp.zcql();
+      const escapedId = id.replace(/'/g, "''");
+      const rows = await zcql.executeZCQLQuery(
+        `SELECT ROWID FROM Deals_Cache WHERE crm_id = '${escapedId}' LIMIT 1`,
+      );
+      const rowId = rows[0] && rows[0].Deals_Cache.ROWID;
+      if (rowId) {
+        const cacheRow = { ROWID: rowId };
+        if (stage !== undefined) cacheRow.Stage = stage;
+        if (amount !== undefined) cacheRow.amount = amount === "" ? null : Number(amount);
+        if (nextStep !== undefined) cacheRow.next_step = nextStep;
+        if (reasonForLoss !== undefined) cacheRow.Reason_For_Loss = reasonForLoss;
+        if (Object.keys(cacheRow).length > 1) {
+          await catalystApp.datastore().table("Deals_Cache").updateRows([cacheRow]);
+        }
+      }
+    } catch (cacheErr) {
+      console.error("Cache Deals_Cache non mis à jour:", cacheErr.message);
+    }
+
+    const after = await crmRequest(`/crm/v6/Deals/${id}`);
+    const record = (after && after.data && after.data[0]) || null;
+    res.status(200).json({ ...buildDealDetail(record, id), relance });
+  } catch (err) {
+    console.error("PATCH /deals/:id error:", err.message);
+    res.status(500).json({ error: "Erreur mise à jour deal", detail: err.message });
+  }
+});
+
+// Relance en un clic : crée une tâche de suivi sans formulaire.
+app.post("/deals/:id/relance", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const data = await crmRequest(`/crm/v6/Deals/${id}`);
+    const record = (data && data.data && data.data[0]) || {};
+    const relance = await createRelance(id, record);
+    res.status(200).json(relance);
+  } catch (err) {
+    console.error("POST /deals/:id/relance error:", err.message);
+    res.status(500).json({ error: "Erreur création relance", detail: err.message });
+  }
+});
+
+// Annulation d'une relance (bouton "Annuler" du bandeau).
+app.delete("/tasks/:id", async (req, res) => {
+  try {
+    const data = await crmWrite("DELETE", `/crm/v6/Tasks/${encodeURIComponent(req.params.id)}`);
+    assertCrmWriteOk(data, "Échec de l'annulation de la relance");
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /tasks/:id error:", err.message);
+    res.status(500).json({ error: "Erreur suppression tâche", detail: err.message });
+  }
+});
+
+// Ajout d'une remarque sur un lead, contact ou deal.
+app.post("/notes", async (req, res) => {
+  try {
+    const { module, id, content } = req.body || {};
+    if (!module || !id || !content || !content.trim()) {
+      return res.status(400).json({ error: "Paramètres 'module', 'id' et 'content' requis." });
+    }
+    if (!["Leads", "Contacts", "Deals"].includes(module)) {
+      return res.status(400).json({ error: "Module invalide." });
+    }
+    const data = await crmWrite("POST", `/crm/v6/${module}/${id}/Notes`, {
+      data: [{ Note_Content: content.trim() }],
+    });
+    const entry = assertCrmWriteOk(data, "Échec de la création de la remarque");
+    res.status(200).json({
+      id: entry.details && entry.details.id,
+      content: content.trim(),
+      date: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("POST /notes error:", err.message);
+    res.status(500).json({ error: "Erreur création remarque", detail: err.message });
+  }
+});
+
+// Fil d'activité (Notes + Tâches réelles) d'un lead, contact ou deal.
+app.get("/activity/:module/:id", async (req, res) => {
+  try {
+    const { module, id } = req.params;
+    if (!["Leads", "Contacts", "Deals"].includes(module)) {
+      return res.status(400).json({ error: "Module invalide." });
+    }
+    const [notesData, tasksData] = await Promise.all([
+      crmRequest(`/crm/v6/${module}/${id}/Notes`).catch(() => null),
+      crmRequest(`/crm/v6/${module}/${id}/Tasks`).catch(() => null),
+    ]);
+    const notes = (notesData && notesData.data) || [];
+    const tasks = (tasksData && tasksData.data) || [];
+
+    const entries = notes
+      .map((n) => {
+        const content = n.Note_Content || "";
+        return {
+          kind: /^Étape\s*:/.test(content) ? "stage" : "note",
+          text: content,
+          date: n.Modified_Time || n.Created_Time || "",
+        };
+      })
+      .concat(
+        tasks.map((t) => ({
+          kind: "task",
+          text: t.Subject || "Tâche",
+          date: t.Modified_Time || t.Created_Time || "",
+          taskId: t.id,
+          status: t.Status || "",
+          dueDate: t.Due_Date || "",
+        })),
+      )
+      .filter((e) => e.date)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 30);
+
+    res.status(200).json({ activity: entries });
+  } catch (err) {
+    console.error("GET /activity error:", err.message);
+    res.status(500).json({ error: "Erreur fil d'activité", detail: err.message });
+  }
+});
+
+// Recherche deals (Data Store) — utilisée par la recherche globale.
+app.get("/deals/search", async (req, res) => {
+  try {
+    const q = (req.query.q || "").trim().replace(/'/g, "''");
+    if (!q) return res.status(400).json({ error: "Paramètre 'q' requis." });
+    const catalystApp = catalyst.initialize(req);
+    const zcql = catalystApp.zcql();
+    const rows = await zcql.executeZCQLQuery(
+      `SELECT crm_id, Deal_Name, Stage, account_name, contact_name, amount, closing_date FROM Deals_Cache WHERE Deal_Name LIKE '*${q}*' OR account_name LIKE '*${q}*' OR contact_name LIKE '*${q}*' LIMIT 50`,
+    );
+    const deals = rows.map((r) => {
+      const d = r.Deals_Cache;
+      return {
+        id: d.crm_id,
+        name: d.Deal_Name,
+        stage: d.Stage,
+        accountName: d.account_name,
+        contactName: d.contact_name,
+        amount: d.amount,
+        closingDate: d.closing_date,
+      };
+    });
+    res.status(200).json({ deals });
+  } catch (err) {
+    res.status(500).json({ error: "Erreur recherche deals", detail: err.message });
   }
 });
 
@@ -449,7 +814,11 @@ app.get("/contacts/detail/:id", async (req, res) => {
       deals,
     });
   } catch (err) {
-    res.status(500).json({ error: "Erreur détail CRM", detail: err.message });
+    // err.response.data porte le code CRM réel (ex. INVALID_ID quand le crm_id
+    // en cache ne correspond à aucun Contact) — bien plus parlant que le
+    // message générique d'axios pour diagnostiquer une fiche inaccessible.
+    const crmDetail = err.response && err.response.data;
+    res.status(500).json({ error: "Erreur détail CRM", detail: crmDetail || err.message });
   }
 });
 

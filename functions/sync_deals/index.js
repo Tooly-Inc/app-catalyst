@@ -26,7 +26,7 @@ module.exports = async (cronDetails, context) => {
   try {
     const token = await getAccessToken();
     const fields =
-      "Deal_Name,Stage,Contact_Name,Account_Name,Type,Reason_For_Loss__s";
+      "Deal_Name,Stage,Contact_Name,Account_Name,Type,Reason_For_Loss__s,Amount,Closing_Date,Next_Step";
 
     // 1. Récupérer tous les deals du CRM (pagination)
     let page = 1,
@@ -72,6 +72,9 @@ module.exports = async (cronDetails, context) => {
         account_name: rec.Account_Name ? rec.Account_Name.name : "",
         type: rec.Type || "",
         Reason_For_Loss: rec.Reason_For_Loss__s || "",
+        amount: rec.Amount || null,
+        closing_date: rec.Closing_Date || null,
+        next_step: rec.Next_Step || "",
       };
       if (idMap[rec.id]) {
         row.ROWID = idMap[rec.id];

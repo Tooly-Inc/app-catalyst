@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard Leads — Tooly</title>
 
+    <!-- Applique le thème mémorisé avant le premier rendu, pour éviter un
+         flash du thème par défaut chez les utilisateurs qui en ont choisi un autre. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("toolyTheme");
+          if (t && t !== "tooly") document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
     <!-- Garde d'authentification Catalyst -->
     <script src="https://static.zohocdn.com/catalyst/sdk/js/4.4.0/catalystWebSDK.js"></script>
     <script src="/__catalyst/sdk/init.js"></script>
@@ -65,6 +76,17 @@
             <span class="stat-value" id="statTotal">—</span>
             <span class="stat-label" id="statLabel">Leads affichés</span>
           </div>
+          <button class="menu-btn" id="menuBtn" aria-label="Menu" type="button">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -89,12 +111,14 @@
           <input
             type="text"
             id="searchInput"
-            placeholder="Rechercher un lead (nom, société, email, téléphone…)"
+            placeholder="Rechercher un deal, un lead, un contact…"
             autocomplete="off"
           />
           <button class="clear-btn" id="clearBtn" title="Effacer" hidden>
             &times;
           </button>
+          <span class="search-kbd-hint" id="searchKbdHint" title="Recherche globale (deals, leads, contacts)">⌘K</span>
+          <div class="search-dropdown" id="searchDropdown" hidden></div>
         </div>
         <div class="filters">
           <select id="statusFilter">
@@ -113,6 +137,18 @@
             </svg>
             Rafraîchir
           </button>
+          <button class="refresh-btn btn-create-deal" id="dealCreateBtn" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path
+                d="M12 5v14M5 12h14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+            Nouveau deal
+          </button>
         </div>
       </section>
 
@@ -123,11 +159,9 @@
             <thead>
               <tr>
                 <th>Nom</th>
-                <th>Société</th>
+                <th id="colSociete">Société</th>
                 <th>Email</th>
                 <th>Téléphone</th>
-                <th>Statut</th>
-                <th id="colSociete">Société</th>
                 <th id="colStatut">Statut</th>
               </tr>
             </thead>
@@ -207,7 +241,108 @@
               <p class="modal-subtitle" id="dealSubtitle" hidden></p>
             </div>
             <div class="modal-body" id="dealBody"></div>
+            <div class="relance-toast" id="relanceToast" hidden></div>
+            <div class="modal-footer" id="dealFooter"></div>
           </div>
+        </div>
+
+        <!-- Panneau des remarques et de l'activité — glisse par-dessus la fiche -->
+        <div class="activity-panel" id="activityPanel" hidden>
+          <button class="modal-back is-visible" id="activityPanelBack" aria-label="Retour">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M15 19l-7-7 7-7"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <div class="modal-header">
+            <h2>Remarques et activité</h2>
+          </div>
+          <div class="modal-body" id="activityPanelBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Création rapide d'un deal -->
+    <div class="modal-overlay" id="dealCreateOverlay" hidden>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="dcTitle">
+        <button class="modal-close" id="dcClose" aria-label="Fermer">&times;</button>
+        <div class="modal-header">
+          <h2 id="dcTitle">Nouveau deal</h2>
+          <p class="modal-subtitle">Fiche simplifiée</p>
+        </div>
+        <div class="modal-body">
+          <div class="dc-field">
+            <span class="qu-label">Contact</span>
+            <input type="text" id="dcContactInput" class="qu-input" placeholder="Rechercher un contact…" autocomplete="off" />
+            <div class="dc-contact-results" id="dcContactResults" hidden></div>
+            <div class="dc-contact-selected" id="dcContactSelected" hidden></div>
+          </div>
+          <div class="dc-field">
+            <span class="qu-label">Nom du deal</span>
+            <input type="text" id="dcName" class="qu-input" placeholder="Ex. Truhlar — implémentation Zoho One" />
+          </div>
+          <div class="dc-field">
+            <span class="qu-label">Étape</span>
+            <div class="stage-pills" id="dcStages"></div>
+          </div>
+          <div class="qu-row">
+            <label class="qu-field">
+              <span class="qu-label">Montant</span>
+              <input type="number" id="dcAmount" class="qu-input" />
+            </label>
+            <label class="qu-field qu-field--grow">
+              <span class="qu-label">Prochaine étape</span>
+              <input type="text" id="dcNextStep" class="qu-input" />
+            </label>
+          </div>
+          <p class="note-error" id="dcError" hidden></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--primary btn--sm" id="dcSubmit" type="button" disabled>Créer</button>
+          <button class="btn btn--ghost btn--sm" id="dcCancel" type="button">Annuler</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Menu -->
+    <div class="drawer-overlay" id="drawerOverlay" hidden>
+      <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <div class="drawer-header">
+          <h2 id="drawerTitle">Menu</h2>
+          <button class="modal-close" id="drawerClose" aria-label="Fermer">&times;</button>
+        </div>
+        <div class="drawer-body">
+          <section class="drawer-section">
+            <p class="drawer-section-title">Apparence</p>
+            <p class="drawer-section-sub">Choisis l'ambiance du tableau de bord.</p>
+            <div class="theme-grid" id="themeGrid"></div>
+          </section>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Notifications de confirmation (remarque ajoutée, deal mis à jour…) -->
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <!-- Boîte de dialogue générique (confirmation / saisie d'un nom) -->
+    <div class="modal-overlay" id="miniDialogOverlay" hidden>
+      <div class="modal-panel" role="alertdialog" aria-modal="true" aria-labelledby="miniDialogTitle">
+        <div class="modal-header">
+          <h2 id="miniDialogTitle">Confirmer</h2>
+        </div>
+        <div class="modal-body">
+          <p class="mini-dialog-message" id="miniDialogMessage"></p>
+          <input type="text" id="miniDialogInput" class="qu-input" hidden />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--primary btn--sm" id="miniDialogConfirm" type="button">Confirmer</button>
+          <button class="btn btn--ghost btn--sm" id="miniDialogCancel" type="button">Annuler</button>
         </div>
       </div>
     </div>
