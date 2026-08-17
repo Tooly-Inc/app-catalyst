@@ -1,0 +1,25 @@
+# Dépendances
+node_modules/
+functions/*/node_modules/
+
+# Secrets — NE JAMAIS committer
+.env
+*.env
+credentials.json
+catalyst-config.json
+
+# Catalyst local / build
+.catalyst/
+.catalystrc
+dist/
+build/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
