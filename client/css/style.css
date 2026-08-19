@@ -169,6 +169,71 @@
   --n7: #e0e4fb;
 }
 
+/* Thème secret "Liquid Glass" — débloqué par un easter egg (voir
+   LIQUID_GLASS_SEQUENCE en JS) : tokyo → macchiato → tokyo → cappuccino.
+   Palette bleu ciel/blanc, ET surfaces translucides + flou (backdrop-filter)
+   sur les panneaux principaux, façon verre dépoli — contrairement aux autres
+   thèmes qui ne font que reteindre les jetons de couleur. */
+:root[data-theme="liquid-glass"] {
+  --magenta-3: #eaf6ff;
+  --magenta-2: #cfeaff;
+  --magenta-1: #7ec8f2;
+  --magenta-0: #3fa9f5;
+  --magenta-n1: #0a84ff;
+  --magenta-n2: #0060c2;
+
+  --n0: #ffffff;
+  --n1: #eef5fb;
+  --n2: #d4e3f0;
+  --n3: #7c96ad;
+  --n4: #56728a;
+  --n5: #3c576f;
+  --n6: #253a4d;
+  --n7: #142433;
+}
+:root[data-theme="liquid-glass"] body {
+  background: linear-gradient(160deg, #eaf6ff 0%, #dcefff 40%, #cfe4ff 100%);
+}
+/* Pas de backdrop-filter sur .hero : cet élément a par ailleurs
+   overflow:hidden (pour le motif de points en filigrane, voir .hero::after) —
+   combiner overflow:hidden et backdrop-filter sur le même élément (ou sur un
+   parent direct d'un enfant qui a lui aussi un backdrop-filter, comme
+   .hero-stat ci-dessous) est un cas connu de bug de rendu sur mobile
+   (clipping/artefacts au niveau du flou) ; on se contente donc ici d'un
+   dégradé translucide, sans flou, pour rester dans l'esprit du thème sans
+   déclencher ce bug. */
+:root[data-theme="liquid-glass"] .hero {
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.85), rgba(63, 169, 245, 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+:root[data-theme="liquid-glass"] .modal-panel,
+:root[data-theme="liquid-glass"] .drawer-panel,
+:root[data-theme="liquid-glass"] .activity-panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+/* .hero-stat est un enfant de .hero (overflow:hidden, voir plus haut) : pas
+   de backdrop-filter ici non plus, pour la même raison — fond translucide
+   seul. */
+:root[data-theme="liquid-glass"] .hero-stat {
+  background: rgba(255, 255, 255, 0.55);
+}
+:root[data-theme="liquid-glass"] .toolbar .search-wrap {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+/* .view-toggle est volontairement exclu de la règle ci-dessus : sur bureau,
+   c'est une pastille discrète posée directement sur le dégradé du bandeau
+   (voir .view-toggle de base, fond à 16% d'opacité) — lui donner le même
+   traitement qu'un vrai encart opaque + flou la faisait ressortir comme une
+   boîte à part entière, visuellement collée au titre et au compteur dans la
+   même rangée. Seule la barre du bas mobile (sa propre variante, opaque par
+   défaut) reçoit le traitement verre, tout en bas du fichier avec le reste
+   du responsive. */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -606,6 +671,16 @@ body {
   color: var(--n0);
   opacity: 1;
 }
+/* Icônes des onglets : uniquement dans la barre du bas sur mobile (voir la
+   media query responsive) — la pastille compacte du bureau reste du texte
+   seul. Pareil pour la recherche, qui reste dans la barre d'outils côté
+   bureau plutôt que dans cette barre. */
+.view-btn-icon {
+  display: none;
+}
+.view-btn--search {
+  display: none;
+}
 
 /* ============================================================
    MODAL — fiche de détail
@@ -848,24 +923,6 @@ body {
   min-height: 0;
   padding: 4px 24px 22px;
   overflow-y: auto;
-}
-/* Fondu en bas de la zone de contenu, pour suggérer qu'on peut défiler — n'
-   apparaît que s'il reste du contenu sous le pli (voir initScrollFade en JS),
-   sinon il recouvrirait en permanence le dernier champ une fois arrivé en bas. */
-.modal-body::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 32px;
-  background: linear-gradient(to top, var(--n0), transparent);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.modal-body.has-more-below::after {
-  opacity: 1;
 }
 
 .detail-group + .detail-group {
@@ -1707,6 +1764,7 @@ body {
   box-shadow: var(--shadow-lift);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   transform: translateX(100%);
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1726,11 +1784,73 @@ body {
   font-weight: 700;
   color: var(--n7);
 }
+/* La flèche de retour (.modal-back) est positionnée en absolu par-dessus le
+   titre (voir .modal-back) : on ne décale le titre que lorsqu'elle est
+   visible, pour ne pas désaligner "Menu" sur la vue principale. */
+.drawer-header .modal-back.is-visible ~ h2 {
+  margin-left: 30px;
+}
+/* Menu principal <-> Personnalisation : même mécanisme de piste à deux volets
+   que .modal-views/.show-deal (voir plus haut), appliqué au tiroir. Le
+   tiroir a déjà une hauteur pleine (align-items:stretch sur .drawer-overlay),
+   donc pas besoin de l'équivalent d'animatePanelHeight ici. */
+.drawer-views {
+  display: flex;
+  width: 200%;
+  flex: 1 1 auto;
+  min-height: 0;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.drawer-views.show-theme {
+  transform: translateX(-50%);
+}
+.drawer-view {
+  width: 50%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .drawer-body {
   padding: 20px 24px 28px;
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
+}
+.drawer-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.drawer-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--n6);
+  padding: 13px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.drawer-menu-btn svg {
+  flex-shrink: 0;
+  color: var(--n4);
+  transition: color 0.15s;
+}
+.drawer-menu-btn:hover {
+  background: var(--n1);
+  color: var(--magenta-n1);
+}
+.drawer-menu-btn:hover svg {
+  color: var(--magenta-n1);
 }
 .drawer-section-title {
   font-size: 11px;
@@ -1864,7 +1984,10 @@ body {
     touch-action: pan-y pinch-zoom;
   }
   .app {
-    padding: 18px 14px 40px;
+    /* Marge basse généreuse : la barre Leads/Contacts est fixe en bas de
+       l'écran (voir .view-toggle plus bas) et ne doit pas recouvrir les
+       dernières lignes du tableau. */
+    padding: 18px 14px 88px;
   }
   .hero {
     padding: 24px 22px;
@@ -1889,12 +2012,87 @@ body {
   .menu-btn {
     display: none;
   }
-  .view-toggle {
+  /* Toute la largeur du cadre, sur sa propre ligne : sinon la pastille de
+     compteur reste petite et perdue sous le titre. */
+  .hero-stat {
     order: 1;
     flex: 1 0 100%;
+    width: 100%;
   }
-  .hero-stat {
-    order: 2;
+  /* Fenêtre de thème volontairement plus étroite que l'écran (80vw, pas
+     100%) : l'utilisateur voit le thème s'appliquer en direct sur la tranche
+     d'application visible sur la gauche, au lieu que le tiroir ne la
+     recouvre entièrement. */
+  .drawer-panel {
+    width: 80vw;
+    max-width: none;
+  }
+  /* Barre d'onglets façon X (Twitter) : ancrée en bas de l'écran, sortie du
+     flux de .hero-top (position:fixed rend order/flex sans effet — d'où leur
+     retrait ci-dessus). Le glisser-caché au scroll est piloté par JS
+     (translateY appliqué en style inline à chaque frame dans app.js) : pas de
+     transition CSS ici, sinon elle retarderait/lisserait le mouvement au lieu
+     de le coller au doigt comme sur X. */
+  .view-toggle {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: stretch;
+    background: var(--n0);
+    border-top: 1px solid var(--n1);
+    border-radius: 0;
+    padding: 8px max(14px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
+    gap: 6px;
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.14);
+  }
+  /* Onglets façon barre d'icônes mobile : icône au-dessus, libellé en
+     dessous — plus lisible qu'un simple mot dans une barre à 4 colonnes. */
+  .view-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex: 1;
+    color: var(--n4);
+    opacity: 1;
+    padding: 8px 6px;
+    font-size: 10.5px;
+  }
+  .view-btn.active {
+    background: var(--n1);
+    color: var(--magenta-n1);
+  }
+  .view-btn-icon {
+    display: block;
+  }
+  /* Traitement verre pour la barre du bas mobile uniquement (voir plus haut
+     pourquoi .view-toggle bureau en est exclu) : ici elle est déjà un fond
+     opaque plein écran, pas une pastille discrète — la rendre translucide +
+     floutée reste cohérente avec le reste du thème secret. */
+  :root[data-theme="liquid-glass"] .view-toggle {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+  }
+  /* La recherche rejoint les autres onglets dans le flux normal de la barre
+     (4e colonne, après Affaires) plutôt qu'une bulle centrée par-dessus.
+     touch-action:none : sans ça, le navigateur interprète le glissement vers
+     le haut comme un défilement de page et annule le suivi du geste
+     (pointercancel) avant que le seuil d'ouverture ne soit atteint (voir
+     initSheetOpenSwipe en JS). */
+  .view-btn--search {
+    display: flex;
+    touch-action: none;
+  }
+  /* La création d'affaire passe désormais par le menu ("Créer une affaire") :
+     la bulle flottante en bas à droite fait doublon sur mobile. */
+  #dealCreateBtn {
+    display: none;
   }
   .leads-table thead {
     display: none;
@@ -1925,13 +2123,99 @@ body {
     margin-bottom: 1px;
   }
 
-  /* Barre d'outils : la recherche peut se réduire sous son min-width bureau,
-     et les filtres passent à la ligne plutôt que de déborder horizontalement. */
-  .search-wrap {
+  /* La recherche n'a plus sa place dans la barre d'outils sur mobile : elle
+     s'ouvre désormais en popup via le bouton central de la barre du bas (voir
+     #mobileSearchOverlay). Portée à .toolbar .search-wrap seulement : une
+     fois déplacé dans la popup par JS, .search-wrap change d'ancêtre et cette
+     règle ne s'applique plus, donc il redevient visible là-bas. */
+  .toolbar .search-wrap {
+    display: none;
+  }
+  /* Le résultat de recherche (#searchDropdown) est en position:absolute et
+     flottait donc hors du flux normal — dans la popup, il se retrouvait
+     rogné par le overflow:hidden de .modal-panel, qui ne grandissait jamais
+     pour l'accueillir (d'où le rendu "pas responsive" au contenu). Remis en
+     flux normal ici : la popup (et .modal-body, déjà en overflow-y:auto)
+     s'adapte alors naturellement au nombre de résultats. */
+  /* #searchDropdown est un ENFANT direct de .search-wrap, qui est
+     display:flex — en le repassant simplement en position:static ci-dessous,
+     il redevenait un item flex de plus sur la même ligne que l'icône/le
+     champ/le bouton d'effacement, d'où le glissement vers la droite au lieu
+     d'un affichage sous le champ. flex-wrap + une base à 100% le forcent sur
+     sa propre ligne. */
+  #mobileSearchBody .search-wrap {
     min-width: 0;
+    flex-wrap: wrap;
+  }
+  #mobileSearchBody .search-dropdown {
+    position: static;
+    flex: 1 0 100%;
+    margin-top: 10px;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border: 1px solid var(--n1);
+  }
+  /* Feuille plein écran ancrée en bas, glissée vers le haut — même recette
+     que le tiroir de menu (transition CSS permanente sur le panneau +
+     bascule de la classe "is-open", voir openMobileSearch/closeMobileSearch
+     en JS) : plus fiable que d'animer autre chose (la position de la barre
+     du bas, ou la hauteur du panneau) à la main. */
+  /* .modal-overlay assombrit tout l'écran et se fait un fondu d'opacité
+     (voir la règle de base) — hérité des popups classiques, ça donnait
+     l'impression d'une boîte de dialogue par-dessus un arrière-plan qui
+     s'assombrit d'un coup, pas d'une barre qui s'étend. Neutralisé ici : le
+     fond reste transparent et pleinement visible dès l'ouverture ; seul le
+     panneau (ci-dessous) glisse. padding:0 pour que la feuille touche
+     vraiment les bords de l'écran plutôt que de flotter avec une marge. */
+  #mobileSearchOverlay {
+    align-items: flex-end;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+    opacity: 1;
+    transition: none;
+  }
+  #mobileSearchPanel {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #mobileSearchOverlay.is-open #mobileSearchPanel {
+    transform: translateY(0);
+  }
+  /* Poignée : indique qu'on peut glisser la feuille vers le bas pour la
+     refermer ; tapable aussi, en secours si le geste rate. */
+  .sheet-handle {
+    flex-shrink: 0;
+    padding: 10px 0 6px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  #mobileSearchHeader {
+    touch-action: none;
+  }
+  .sheet-handle::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto;
+    border-radius: 999px;
+    background: var(--n2);
   }
   .filters {
     flex-wrap: wrap;
+  }
+  /* Pleine largeur sur sa propre ligne, plutôt qu'une petite liste déroulante
+     perdue à côté du bouton "Nouveau deal". */
+  #statusFilter {
+    flex: 1 0 100%;
+    width: 100%;
   }
   /* Raccourci clavier sans objet sur un écran tactile. */
   .search-kbd-hint {
@@ -1967,6 +2251,17 @@ body {
      remplace la fiche plutôt que de la prolonger. */
   .activity-panel {
     width: 100%;
+  }
+  /* Sur bureau, la popup s'élargit (bounce) pour la vue affaire et pour le
+     panneau de remarques (voir .modal-panel.is-deal/.is-activity). Sur
+     mobile, .activity-panel occupe déjà 100% (ci-dessus) et il n'y a de
+     toute façon pas de place pour un élargissement : neutralisé ici pour
+     éviter l'à-coup de redimensionnement au moment d'ouvrir la vue affaire
+     ou les remarques. */
+  .modal-panel.is-deal,
+  .modal-panel.is-activity,
+  .modal-panel.is-deal.is-activity {
+    max-width: none;
   }
 
   /* 3 colonnes serrées deviennent illisibles sous ~350px de large. */

@@ -3,10 +3,13 @@
     "targets": [
       "leads_api",
       "sync_leads",
-      "test_function",
       "sync_contact",
       "sync_deals",
-      "sync_contacts_signal"
+      "sync_contacts_signal",
+      "sync_deals_signal",
+      "sync_leads_signal",
+      "sync_notes",
+      "sync_notes_signal"
     ],
     "source": "functions",
     "ignore": []

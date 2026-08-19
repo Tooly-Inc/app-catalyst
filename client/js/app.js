@@ -9,7 +9,6 @@
     search: document.getElementById("searchInput"),
     clear: document.getElementById("clearBtn"),
     status: document.getElementById("statusFilter"),
-    refresh: document.getElementById("refreshBtn"),
     total: document.getElementById("statTotal"),
     statLabel: document.getElementById("statLabel"),
     loading: document.getElementById("loadingState"),
@@ -18,8 +17,11 @@
     errorMsg: document.getElementById("errorMsg"),
     btnLeads: document.getElementById("btnLeads"),
     btnContacts: document.getElementById("btnContacts"),
+    btnDeals: document.getElementById("btnDeals"),
     colStatut: document.getElementById("colStatut"),
     colSociete: document.getElementById("colSociete"),
+    colCol3: document.getElementById("colCol3"),
+    colCol4: document.getElementById("colCol4"),
     modalOverlay: document.getElementById("modalOverlay"),
     modalPanel: document.getElementById("modalPanel"),
     modalViews: document.getElementById("modalViews"),
@@ -39,8 +41,17 @@
     activityPanelBack: document.getElementById("activityPanelBack"),
     activityPanelBody: document.getElementById("activityPanelBody"),
     searchKbdHint: document.getElementById("searchKbdHint"),
+    mobileSearchBtn: document.getElementById("mobileSearchBtn"),
+    mobileSearchOverlay: document.getElementById("mobileSearchOverlay"),
+    mobileSearchPanel: document.getElementById("mobileSearchPanel"),
+    mobileSearchHandle: document.getElementById("mobileSearchHandle"),
+    mobileSearchHeader: document.getElementById("mobileSearchHeader"),
+    mobileSearchBody: document.getElementById("mobileSearchBody"),
+    mobileSearchClose: document.getElementById("mobileSearchClose"),
+    searchWrap: document.querySelector(".search-wrap"),
     searchDropdown: document.getElementById("searchDropdown"),
     dealCreateBtn: document.getElementById("dealCreateBtn"),
+    dealCreateBtnLabel: document.querySelector("#dealCreateBtn .btn-label"),
     dcOverlay: document.getElementById("dealCreateOverlay"),
     dcClose: document.getElementById("dcClose"),
     dcCancel: document.getElementById("dcCancel"),
@@ -54,9 +65,29 @@
     dcContactSelected: document.getElementById("dcContactSelected"),
     dcError: document.getElementById("dcError"),
     menuBtn: document.getElementById("menuBtn"),
+    viewToggle: document.getElementById("viewToggle"),
     drawerOverlay: document.getElementById("drawerOverlay"),
     drawerClose: document.getElementById("drawerClose"),
+    drawerBack: document.getElementById("drawerBack"),
+    drawerTitle: document.getElementById("drawerTitle"),
+    drawerViews: document.getElementById("drawerViews"),
+    menuCreateLead: document.getElementById("menuCreateLead"),
+    menuCreateContact: document.getElementById("menuCreateContact"),
+    menuCreateDeal: document.getElementById("menuCreateDeal"),
+    menuPersonalization: document.getElementById("menuPersonalization"),
     themeGrid: document.getElementById("themeGrid"),
+    qcOverlay: document.getElementById("quickCreateOverlay"),
+    qcTitle: document.getElementById("qcTitle"),
+    qcClose: document.getElementById("qcClose"),
+    qcCancel: document.getElementById("qcCancel"),
+    qcSubmit: document.getElementById("qcSubmit"),
+    qcFirstName: document.getElementById("qcFirstName"),
+    qcLastName: document.getElementById("qcLastName"),
+    qcCompanyField: document.getElementById("qcCompanyField"),
+    qcCompany: document.getElementById("qcCompany"),
+    qcEmail: document.getElementById("qcEmail"),
+    qcPhone: document.getElementById("qcPhone"),
+    qcError: document.getElementById("qcError"),
     miniDialogOverlay: document.getElementById("miniDialogOverlay"),
     miniDialogTitle: document.getElementById("miniDialogTitle"),
     miniDialogMessage: document.getElementById("miniDialogMessage"),
@@ -93,7 +124,10 @@
   let dealCreateStage = null;
   let dealCreateSearchTimer = null;
 
-  // Configuration par vue : endpoints, libellés de colonnes et placeholder
+  // Configuration par vue : endpoints, libellés de colonnes et placeholder.
+  // col3/col4 pilotent à la fois le libellé d'en-tête et la donnée affichée
+  // dans les 2 colonnes du milieu, réutilisées pour montant/clôture sur la
+  // vue affaires (pas d'email/téléphone sur un deal).
   const VIEWS = {
     leads: {
       list: "/leads?per_page=200",
@@ -101,7 +135,10 @@
       statLabel: "Leads affichés",
       colSociete: "Société",
       colStatut: "Statut",
+      col3: "email",
+      col4: "phone",
       showStatusFilter: true,
+      createLabel: "Nouveau lead",
     },
     contacts: {
       list: "/contacts",
@@ -109,7 +146,20 @@
       statLabel: "Contacts affichés",
       colSociete: "Société",
       colStatut: "Poste",
+      col3: "email",
+      col4: "phone",
       showStatusFilter: true,
+      createLabel: "Nouveau contact",
+    },
+    deals: {
+      list: "/deals",
+      statLabel: "Affaires affichées",
+      colSociete: "Société",
+      colStatut: "Étape",
+      col3: "amount",
+      col4: "closingDate",
+      showStatusFilter: true,
+      createLabel: "Nouveau deal",
     },
   };
 
@@ -212,6 +262,29 @@
 
     const statutLabel = cfg.colStatut;
     const societeLabel = cfg.colSociete;
+    const col3Label = cfg.col3 === "amount" ? "Montant" : "Email";
+    const col4Label = cfg.col4 === "closingDate" ? "Clôture prévue" : "Téléphone";
+
+    function renderCol3(l) {
+      if (cfg.col3 === "amount") {
+        return l.amount != null && l.amount !== ""
+          ? escapeHtml(formatMoney(l.amount))
+          : '<span class="muted">—</span>';
+      }
+      return l.email
+        ? `<a href="mailto:${escapeHtml(l.email)}">${escapeHtml(l.email)}</a>`
+        : '<span class="muted">—</span>';
+    }
+    function renderCol4(l) {
+      if (cfg.col4 === "closingDate") {
+        return l.closingDate
+          ? escapeHtml(formatDateShort(l.closingDate))
+          : '<span class="muted">—</span>';
+      }
+      return l.phone
+        ? `<a href="tel:${escapeHtml(l.phone)}">${escapeHtml(l.phone)}</a>`
+        : '<span class="muted">—</span>';
+    }
 
     els.body.innerHTML = filtered
       .map(
@@ -219,16 +292,8 @@
   <tr class="lead-row" data-id="${escapeHtml(l.id)}" title="Voir les détails">
     <td data-label="Nom" class="lead-name">${escapeHtml(l.name) || '<span class="muted">—</span>'}</td>
     <td data-label="${escapeHtml(societeLabel)}" class="lead-company">${escapeHtml(l.company) || '<span class="muted">—</span>'}</td>
-    <td data-label="Email" class="lead-email">${
-      l.email
-        ? `<a href="mailto:${escapeHtml(l.email)}">${escapeHtml(l.email)}</a>`
-        : '<span class="muted">—</span>'
-    }</td>
-    <td data-label="Téléphone" class="lead-phone">${
-      l.phone
-        ? `<a href="tel:${escapeHtml(l.phone)}">${escapeHtml(l.phone)}</a>`
-        : '<span class="muted">—</span>'
-    }</td>
+    <td data-label="${escapeHtml(col3Label)}" class="lead-email">${renderCol3(l)}</td>
+    <td data-label="${escapeHtml(col4Label)}" class="lead-phone">${renderCol4(l)}</td>
     <td data-label="${escapeHtml(statutLabel)}">${
       l.status
         ? `<span class="${statusBadgeClass(l.status)}">${escapeHtml(l.status)}</span>`
@@ -244,7 +309,13 @@
       row.addEventListener("click", (e) => {
         if (e.target.closest("a")) return; // laisse les liens mailto/tel fonctionner
         const id = row.getAttribute("data-id");
-        if (id) openDetailModal(id);
+        if (!id) return;
+        if (currentView === "deals") {
+          openModal();
+          openDealDetail(id);
+        } else {
+          openDetailModal(id);
+        }
       });
     });
 
@@ -464,7 +535,15 @@
   // Anime le changement de hauteur du panneau avec le même bounce que le
   // redimensionnement "bureau", en verrouillant une valeur en px avant/après
   // la mutation (une hauteur "auto" ne peut pas s'animer nativement en CSS).
-  function animatePanelHeight(applyChange) {
+  // afterReady (optionnel) : promesse à attendre avant de mesurer la hauteur
+  // "after" — utile quand applyChange() déclenche AUSSI une transition de
+  // largeur (voir .modal-panel.is-deal) en plus du changement de contenu :
+  // mesurer tout de suite donnerait la hauteur du nouveau contenu à
+  // l'ancienne largeur (la transition de largeur n'a pas encore progressé au
+  // moment de la mesure), verrouillerait cette mauvaise valeur, et le
+  // contenu réel — une fois la largeur stabilisée — se retrouverait rogné
+  // par l'overflow:hidden du panneau (voir waitForPanelWidthTransition).
+  function animatePanelHeight(applyChange, afterReady) {
     const panel = els.modalPanel;
     const before = panel.getBoundingClientRect().height;
     if (!before) {
@@ -477,43 +556,60 @@
     // s'y loger plutôt que de déborder derrière l'overflow:hidden, donc mesurer
     // après coup donnerait la même valeur que "before" et casserait la transition.
     applyChange();
-    const after = panel.getBoundingClientRect().height;
-    panel.style.height = `${before}px`;
-    requestAnimationFrame(() => {
+    const measureAndAnimate = () => {
+      const after = panel.getBoundingClientRect().height;
+      panel.style.height = `${before}px`;
       requestAnimationFrame(() => {
-        panel.style.height = `${after}px`;
+        requestAnimationFrame(() => {
+          panel.style.height = `${after}px`;
+        });
       });
-    });
-    let released = false;
-    const release = () => {
-      if (released) return;
-      released = true;
-      panel.style.height = "";
+      let released = false;
+      const release = () => {
+        if (released) return;
+        released = true;
+        panel.style.height = "";
+      };
+      panel.addEventListener(
+        "transitionend",
+        (e) => {
+          if (e.propertyName === "height") release();
+        },
+        { once: true },
+      );
+      setTimeout(release, 650);
     };
-    panel.addEventListener(
-      "transitionend",
-      (e) => {
-        if (e.propertyName === "height") release();
-      },
-      { once: true },
-    );
-    setTimeout(release, 650);
+    if (afterReady) afterReady.then(measureAndAnimate);
+    else measureAndAnimate();
   }
 
-  // Le fondu en bas de .modal-body (voir CSS) ne doit apparaître que s'il
-  // reste du contenu à faire défiler, sinon il recouvre en permanence le
-  // dernier champ une fois la fiche entièrement scrollée. Un MutationObserver
-  // suffit à couvrir tous les cas (changement de vue, ajout d'une remarque,
-  // édition…) sans avoir à réappeler une fonction après chaque rendu.
-  function initScrollFade(el) {
-    const update = () => {
-      el.classList.toggle("has-more-below", el.scrollHeight - el.scrollTop - el.clientHeight > 1);
-    };
-    el.addEventListener("scroll", update);
-    new MutationObserver(update).observe(el, { childList: true, subtree: true, characterData: true });
-    update();
+  // L'entrée dans le volet affaire élargit .modal-panel en même temps
+  // (voir .modal-panel.is-deal, transition max-width 0.55s) que la fiche
+  // charge ses données. Si les données arrivent avant la fin de cet
+  // élargissement, animatePanelHeight mesurait la hauteur du nouveau contenu
+  // à une largeur encore intermédiaire (ni l'ancienne ni la nouvelle),
+  // verrouillait cette mauvaise valeur, et le contenu réel — une fois la
+  // largeur stabilisée — se retrouvait rogné par l'overflow:hidden du
+  // panneau jusqu'au relâchement de la contrainte de hauteur. On attend donc
+  // la fin de cette transition avant d'animer la hauteur.
+  function waitForPanelWidthTransition() {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      els.modalPanel.addEventListener(
+        "transitionend",
+        (e) => {
+          if (e.propertyName === "max-width") finish();
+        },
+        { once: true },
+      );
+      setTimeout(finish, 600);
+    });
   }
-  [els.modalBody, els.dealBody, els.activityPanelBody].forEach(initScrollFade);
 
   // Remplace le contenu du popup avec un fondu — un nouveau nœud "fade-in" à
   // chaque appel, donc l'animation rejoue à chaque changement d'état.
@@ -1489,7 +1585,12 @@
   async function openDealDetail(id) {
     els.modalPanel.classList.add("is-deal");
     els.modalViews.classList.add("show-deal");
-    showBackButton();
+    const widthReady = waitForPanelWidthTransition();
+    // La flèche retour n'a de sens que si une fiche lead/contact est
+    // affichée en dessous (voir currentDetailData) — ouverte directement
+    // (onglet Affaires, recherche globale), il n'y a rien vers quoi revenir.
+    if (currentDetailData) showBackButton();
+    else hideBackButton();
     closeActivityPanel();
 
     dealEditing = false;
@@ -1511,6 +1612,7 @@
       currentDeal = { id, ...data };
       dealActivity = activityData.activity || [];
 
+      await widthReady;
       animatePanelHeight(() => {
         els.dealTitle.textContent = data.title || "Affaire";
         els.dealAvatar.textContent = initials(data.title);
@@ -1522,6 +1624,7 @@
       });
     } catch (err) {
       currentDeal = null;
+      await widthReady;
       animatePanelHeight(() => {
         setDealBody(`<p class="empty-sub">Erreur : ${escapeHtml(err.message)}</p>`);
         els.dealFooter.innerHTML = "";
@@ -1535,7 +1638,13 @@
     closeActivityPanel();
     // Vide le volet affaire en même temps qu'on recalcule la hauteur : sinon
     // son contenu (potentiellement plus grand) reste dans le DOM et continue
-    // de gonfler la hauteur partagée de la rangée à deux volets.
+    // de gonfler la hauteur partagée de la rangée à deux volets. La largeur
+    // du panneau rétrécit en même temps (retrait de is-deal) : on attend la
+    // fin de cette transition avant de mesurer/verrouiller la hauteur (voir
+    // animatePanelHeight/waitForPanelWidthTransition), sinon la fiche
+    // principale révélée se retrouve rognée pendant que la largeur finit de
+    // se stabiliser.
+    const widthReady = waitForPanelWidthTransition();
     animatePanelHeight(() => {
       els.modalViews.classList.remove("show-deal");
       els.modalPanel.classList.remove("is-deal");
@@ -1544,7 +1653,7 @@
       els.dealAvatar.textContent = "";
       els.dealSubtitle.hidden = true;
       els.dealSubtitle.textContent = "";
-    });
+    }, widthReady);
     currentDeal = null;
     dealActivity = [];
     dealEditing = false;
@@ -1612,7 +1721,14 @@
     const id = card.getAttribute("data-deal-id");
     if (id) openDealDetail(id);
   });
-  els.modalBack.addEventListener("click", closeDealDetail);
+  // Si l'affaire a été ouverte directement (onglet Affaires, recherche globale)
+  // il n'y a pas de fiche lead/contact sous-jacente vers laquelle revenir :
+  // la flèche de retour ferme alors toute la popup plutôt que de révéler un
+  // premier volet vide.
+  els.modalBack.addEventListener("click", () => {
+    if (currentDetailData) closeDealDetail();
+    else closeModal();
+  });
   els.dealFooter.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-action]");
     if (!btn) return;
@@ -1638,8 +1754,17 @@
       closeMiniDialog(null);
       return;
     }
+    if (!els.mobileSearchOverlay.hidden) {
+      closeMobileSearch();
+      return;
+    }
     if (!els.drawerOverlay.hidden) {
-      closeMenu();
+      if (els.drawerViews.classList.contains("show-theme")) showDrawerMenu();
+      else closeMenu();
+      return;
+    }
+    if (!els.qcOverlay.hidden) {
+      closeQuickCreate();
       return;
     }
     if (!els.dcOverlay.hidden) {
@@ -1651,7 +1776,7 @@
       return;
     }
     if (els.modalOverlay.hidden) return;
-    if (els.modalPanel.classList.contains("is-deal")) closeDealDetail();
+    if (els.modalPanel.classList.contains("is-deal") && currentDetailData) closeDealDetail();
     else closeModal();
   });
 
@@ -1693,6 +1818,16 @@
     </div>`;
   }
 
+  // Rejoue le fade-in-vers-le-haut déjà utilisé ailleurs dans l'app (voir
+  // setModalBody/setDealBody) à chaque rafraîchissement des résultats — sans
+  // retirer puis reforcer un reflow, la classe resterait posée dès le
+  // premier rendu et l'animation ne rejouerait jamais aux saisies suivantes.
+  function replaySearchDropdownAnimation() {
+    els.searchDropdown.classList.remove("fade-in");
+    void els.searchDropdown.offsetWidth;
+    els.searchDropdown.classList.add("fade-in");
+  }
+
   function renderSearchResults(groups) {
     searchResults = [];
     let html = "";
@@ -1707,6 +1842,7 @@
     });
     els.searchDropdown.innerHTML = html || '<p class="palette-empty">Aucun résultat.</p>';
     els.searchDropdown.hidden = false;
+    replaySearchDropdownAnimation();
     searchIndex = searchResults.length ? 0 : -1;
     updateSearchActiveRow();
   }
@@ -1729,10 +1865,12 @@
     } catch (err) {
       els.searchDropdown.innerHTML = `<p class="palette-empty">Erreur : ${escapeHtml(err.message)}</p>`;
       els.searchDropdown.hidden = false;
+      replaySearchDropdownAnimation();
     }
   }
 
   function openSearchResult(item) {
+    closeMobileSearch(); // no-op sur bureau (overlay déjà fermé)
     hideSearchDropdown();
     els.search.value = "";
     els.clear.hidden = true;
@@ -1749,6 +1887,156 @@
     els.search.focus();
     els.search.select();
   });
+  // Recherche mobile en popup : .search-wrap est déplacé physiquement dans
+  // la popup à l'ouverture (et réinséré dans la barre d'outils à la
+  // fermeture) plutôt que dupliqué — le champ/la logique de recherche
+  // existants continuent de fonctionner tel quels, peu importe leur parent
+  // du moment.
+  const toolbarEl = document.querySelector(".toolbar");
+  // Même recette que les autres popups de l'appli (voir openModal/openMenu) :
+  // .search-wrap est déplacé physiquement dans la feuille à l'ouverture, puis
+  // hidden=false + double rAF + classe "is-open" déclenchent la transition
+  // CSS déjà définie sur #mobileSearchPanel (voir style.css) — un essai
+  // précédent qui animait la position de la barre du bas à la main (JS) au
+  // lieu de laisser une transition CSS faire le travail sur le panneau
+  // s'est révélé peu fiable ; on revient donc au mécanisme éprouvé, identique
+  // à celui du tiroir de menu.
+  function openMobileSearch() {
+    if (els.mobileSearchBody && els.searchWrap) {
+      els.mobileSearchBody.appendChild(els.searchWrap);
+    }
+    els.mobileSearchOverlay.hidden = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        els.mobileSearchOverlay.classList.add("is-open");
+      });
+    });
+    setTimeout(() => els.search.focus(), 60);
+  }
+  function closeMobileSearch() {
+    if (els.mobileSearchOverlay.hidden) return;
+    els.mobileSearchOverlay.classList.remove("is-open");
+    setTimeout(() => {
+      els.mobileSearchOverlay.hidden = true;
+      if (toolbarEl && els.searchWrap) {
+        toolbarEl.insertBefore(els.searchWrap, toolbarEl.firstChild);
+      }
+    }, 350); // laisse le temps à la feuille de redescendre (transition 0.35s, voir CSS)
+  }
+  if (els.mobileSearchBtn) {
+    els.mobileSearchBtn.addEventListener("click", openMobileSearch);
+  }
+  if (els.mobileSearchClose) {
+    els.mobileSearchClose.addEventListener("click", closeMobileSearch);
+  }
+  if (els.mobileSearchHandle) {
+    els.mobileSearchHandle.addEventListener("click", closeMobileSearch);
+  }
+  els.mobileSearchOverlay.addEventListener("click", (e) => {
+    if (e.target === els.mobileSearchOverlay) closeMobileSearch();
+  });
+
+  // Glisser la poignée (ou l'en-tête) vers le bas referme la feuille — portée
+  // à cette seule zone plutôt qu'à toute la feuille pour ne pas interférer
+  // avec le défilement des résultats dans le corps.
+  (function initSheetCloseSwipe() {
+    const SHEET_CLOSE_THRESHOLD_PX = 60;
+    const SHEET_CLOSE_CANCEL_HORIZONTAL_PX = 40;
+    let startX = null;
+    let startY = null;
+    let tracking = false;
+    [els.mobileSearchHandle, els.mobileSearchHeader].forEach((zone) => {
+      if (!zone) return;
+      zone.addEventListener(
+        "pointerdown",
+        (e) => {
+          if (e.pointerType !== "touch") return;
+          startX = e.clientX;
+          startY = e.clientY;
+          tracking = true;
+        },
+        { passive: false },
+      );
+      zone.addEventListener(
+        "pointermove",
+        (e) => {
+          if (!tracking) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          e.preventDefault();
+          if (Math.abs(dx) > SHEET_CLOSE_CANCEL_HORIZONTAL_PX && Math.abs(dx) > Math.abs(dy)) {
+            tracking = false;
+            return;
+          }
+          if (dy > SHEET_CLOSE_THRESHOLD_PX) {
+            tracking = false;
+            closeMobileSearch();
+          }
+        },
+        { passive: false },
+      );
+      zone.addEventListener("pointerup", () => {
+        tracking = false;
+      });
+      zone.addEventListener("pointercancel", () => {
+        tracking = false;
+      });
+    });
+  })();
+
+  // Glisser la poignée centrale vers le haut ouvre la feuille de recherche —
+  // même recette que le swipe qui ouvre le tiroir de menu (seuil à franchir,
+  // pas de suivi 1:1 du doigt) : une fois le seuil dépassé, on déclenche
+  // l'ouverture d'un coup et la transition CSS du panneau fait le reste.
+  // Portée à la poignée elle-même : c'est là que le pouce doit être posé pour
+  // que le geste soit capté. passive:false + preventDefault dès qu'un
+  // mouvement est mesuré : sans ça, le navigateur interprète le glissement
+  // comme un défilement de page et annule le suivi (pointercancel) avant que
+  // le seuil ne soit atteint — la poignée a aussi touch-action:none en CSS
+  // pour la même raison.
+  (function initSheetOpenSwipe() {
+    if (!els.mobileSearchBtn) return;
+    const SHEET_OPEN_THRESHOLD_PX = 40;
+    const SHEET_OPEN_CANCEL_HORIZONTAL_PX = 40;
+    let startX = null;
+    let startY = null;
+    let tracking = false;
+    els.mobileSearchBtn.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (e.pointerType !== "touch") return;
+        if (anyOverlayOpen()) return;
+        startX = e.clientX;
+        startY = e.clientY;
+        tracking = true;
+      },
+      { passive: false },
+    );
+    els.mobileSearchBtn.addEventListener(
+      "pointermove",
+      (e) => {
+        if (!tracking) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        e.preventDefault();
+        if (Math.abs(dx) > SHEET_OPEN_CANCEL_HORIZONTAL_PX && Math.abs(dx) > Math.abs(dy)) {
+          tracking = false;
+          return;
+        }
+        if (dy < -SHEET_OPEN_THRESHOLD_PX) {
+          tracking = false;
+          openMobileSearch();
+        }
+      },
+      { passive: false },
+    );
+    els.mobileSearchBtn.addEventListener("pointerup", () => {
+      tracking = false;
+    });
+    els.mobileSearchBtn.addEventListener("pointercancel", () => {
+      tracking = false;
+    });
+  })();
   els.searchDropdown.addEventListener("click", (e) => {
     const row = e.target.closest(".palette-row");
     if (!row) return;
@@ -1929,7 +2217,10 @@
     }
   }
 
-  els.dealCreateBtn.addEventListener("click", openDealCreate);
+  els.dealCreateBtn.addEventListener("click", () => {
+    if (currentView === "deals") openDealCreate();
+    else openQuickCreate(currentView);
+  });
   els.dcClose.addEventListener("click", closeDealCreate);
   els.dcCancel.addEventListener("click", closeDealCreate);
   els.dcOverlay.addEventListener("click", (e) => {
@@ -1950,6 +2241,84 @@
     if (e.target.closest(".dc-contact-clear")) clearDealCreateContact();
   });
   els.dcSubmit.addEventListener("click", submitDealCreate);
+
+  // --- Création rapide d'un lead ou d'un contact (formulaire commun) ---
+  let quickCreateModule = null; // "leads" | "contacts"
+
+  function updateQuickCreateSubmitState() {
+    const lastNameOk = els.qcLastName.value.trim();
+    const companyOk = quickCreateModule !== "leads" || els.qcCompany.value.trim();
+    els.qcSubmit.disabled = !lastNameOk || !companyOk;
+  }
+
+  function openQuickCreate(module) {
+    quickCreateModule = module;
+    els.qcFirstName.value = "";
+    els.qcLastName.value = "";
+    els.qcCompany.value = "";
+    els.qcEmail.value = "";
+    els.qcPhone.value = "";
+    els.qcError.hidden = true;
+    els.qcCompanyField.hidden = module !== "leads";
+    els.qcTitle.textContent = module === "leads" ? "Nouveau lead" : "Nouveau contact";
+    updateQuickCreateSubmitState();
+
+    els.qcOverlay.hidden = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        els.qcOverlay.classList.add("is-open");
+      });
+    });
+    requestAnimationFrame(() => els.qcFirstName.focus());
+  }
+
+  function closeQuickCreate() {
+    if (els.qcOverlay.hidden) return;
+    els.qcOverlay.classList.remove("is-open");
+    let done = false;
+    const panel = els.qcOverlay.querySelector(".modal-panel");
+    const finish = () => {
+      if (done) return;
+      done = true;
+      els.qcOverlay.hidden = true;
+    };
+    panel.addEventListener("transitionend", finish, { once: true });
+    setTimeout(finish, 500);
+  }
+
+  async function submitQuickCreate() {
+    if (els.qcSubmit.disabled) return;
+    els.qcSubmit.disabled = true;
+    els.qcError.hidden = true;
+    try {
+      const payload = {
+        lastName: els.qcLastName.value.trim(),
+        firstName: els.qcFirstName.value.trim() || undefined,
+        email: els.qcEmail.value.trim() || undefined,
+        phone: els.qcPhone.value.trim() || undefined,
+      };
+      if (quickCreateModule === "leads") payload.company = els.qcCompany.value.trim();
+      const path = quickCreateModule === "leads" ? "/leads" : "/contacts";
+      const data = await apiSend("POST", path, payload);
+      closeQuickCreate();
+      showToast(quickCreateModule === "leads" ? "Lead créé" : "Contact créé");
+      if (currentView === quickCreateModule) loadRecords();
+      openDetailModal(data.id, quickCreateModule);
+    } catch (err) {
+      els.qcSubmit.disabled = false;
+      els.qcError.textContent = `Erreur : ${err.message}`;
+      els.qcError.hidden = false;
+    }
+  }
+
+  els.qcClose.addEventListener("click", closeQuickCreate);
+  els.qcCancel.addEventListener("click", closeQuickCreate);
+  els.qcOverlay.addEventListener("click", (e) => {
+    if (e.target === els.qcOverlay) closeQuickCreate();
+  });
+  els.qcLastName.addEventListener("input", updateQuickCreateSubmitState);
+  els.qcCompany.addEventListener("input", updateQuickCreateSubmitState);
+  els.qcSubmit.addEventListener("click", submitQuickCreate);
 
   // --- Menu + thèmes ---
   const THEME_STORAGE_KEY = "toolyTheme";
@@ -1997,9 +2366,38 @@
       swatch: ["#3f59a8", "#16161e", "#00cece"],
     },
   ];
+  // Thème secret : caché de la grille tant qu'il n'est pas débloqué (voir
+  // LIQUID_GLASS_SEQUENCE ci-dessous). Une fois débloqué, le déverrouillage
+  // est mémorisé pour rester acquis d'une session à l'autre.
+  const LIQUID_GLASS_THEME = {
+    id: "liquid-glass",
+    name: "Liquid Glass",
+    tagline: "Thème secret — verre dépoli et reflets translucides",
+    swatch: ["#a8d8ff", "#eaf6ff", "#00cece"],
+  };
+  const LIQUID_GLASS_UNLOCK_KEY = "toolyLiquidGlassUnlocked";
+  const LIQUID_GLASS_SEQUENCE = ["tokyo", "macchiato", "tokyo", "cappuccino"];
+  let themeClickHistory = [];
+  function isLiquidGlassUnlocked() {
+    try {
+      return localStorage.getItem(LIQUID_GLASS_UNLOCK_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+  function unlockLiquidGlass() {
+    try {
+      localStorage.setItem(LIQUID_GLASS_UNLOCK_KEY, "1");
+    } catch (e) {
+      // stockage indisponible (navigation privée…) : reste débloqué pour la session
+    }
+  }
+  function visibleThemes() {
+    return isLiquidGlassUnlocked() ? THEMES.concat(LIQUID_GLASS_THEME) : THEMES;
+  }
 
   function renderThemeGrid(activeId) {
-    els.themeGrid.innerHTML = THEMES.map(
+    els.themeGrid.innerHTML = visibleThemes().map(
       (t) => `
     <button type="button" class="theme-card${t.id === activeId ? " is-active" : ""}" data-theme-id="${t.id}">
       <span class="theme-swatch">${t.swatch.map((c) => `<span style="background:${c}"></span>`).join("")}</span>
@@ -2030,8 +2428,30 @@
     }
   }
 
+  // Menu principal <-> Personnalisation, même principe de retour que la vue
+  // affaire de la popup de détail (showBackButton/hideBackButton).
+  function showDrawerMenu() {
+    els.drawerViews.classList.remove("show-theme");
+    els.drawerTitle.textContent = "Menu";
+    els.drawerBack.classList.remove("is-visible");
+    setTimeout(() => {
+      els.drawerBack.hidden = true;
+    }, 200);
+  }
+  function showDrawerTheme() {
+    els.drawerViews.classList.add("show-theme");
+    els.drawerTitle.textContent = "Personnalisation";
+    els.drawerBack.hidden = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        els.drawerBack.classList.add("is-visible");
+      });
+    });
+  }
+
   function openMenu() {
     if (!els.drawerOverlay.hidden) return;
+    showDrawerMenu();
     els.drawerOverlay.hidden = false;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -2056,8 +2476,22 @@
 
   els.menuBtn.addEventListener("click", openMenu);
   els.drawerClose.addEventListener("click", closeMenu);
+  els.drawerBack.addEventListener("click", showDrawerMenu);
   els.drawerOverlay.addEventListener("click", (e) => {
     if (e.target === els.drawerOverlay) closeMenu();
+  });
+  els.menuPersonalization.addEventListener("click", showDrawerTheme);
+  els.menuCreateDeal.addEventListener("click", () => {
+    closeMenu();
+    openDealCreate();
+  });
+  els.menuCreateLead.addEventListener("click", () => {
+    closeMenu();
+    openQuickCreate("leads");
+  });
+  els.menuCreateContact.addEventListener("click", () => {
+    closeMenu();
+    openQuickCreate("contacts");
   });
 
   // Le pictogramme et le bouton burger sont retirés du bandeau sur mobile
@@ -2078,7 +2512,14 @@
   let swipeStartY = null;
   let swipeTracking = false;
   function anyOverlayOpen() {
-    return !els.drawerOverlay.hidden || !els.modalOverlay.hidden || !els.miniDialogOverlay.hidden || !els.dcOverlay.hidden;
+    return (
+      !els.drawerOverlay.hidden ||
+      !els.modalOverlay.hidden ||
+      !els.miniDialogOverlay.hidden ||
+      !els.dcOverlay.hidden ||
+      !els.mobileSearchOverlay.hidden ||
+      !els.qcOverlay.hidden
+    );
   }
   document.addEventListener(
     "pointerdown",
@@ -2121,10 +2562,96 @@
   document.addEventListener("pointercancel", () => {
     swipeTracking = false;
   });
+
+  // Barre Leads/Contacts + bulle "Nouveau deal" façon X (Twitter) sur mobile :
+  // se dérobent au même rythme que le scroll descendant (la barre glisse
+  // vers le bas, la bulle rétrécit et s'estompe), et reviennent au même
+  // rythme dès qu'on remonte — piloté en style inline à chaque frame, calé
+  // 1:1 sur la distance scrollée (pas un simple show/hide déclenché à un
+  // seuil), pour un vrai effet qui suit le doigt. Un seul accumulateur de
+  // scroll partagé pour que les deux restent synchronisés. Uniquement sous
+  // 620px : au-delà, les deux restent dans le bandeau/la barre d'outils (voir
+  // CSS) et ces transformations ne doivent rien faire.
+  (function initMobileScrollHide() {
+    const bar = els.viewToggle;
+    const fab = els.dealCreateBtn;
+    if (!bar) return;
+    let lastScrollY = window.scrollY;
+    let hideOffset = 0;
+    let barHeight = bar.getBoundingClientRect().height || 64;
+    let ticking = false;
+
+    function positionFab() {
+      if (fab) fab.style.bottom = `${barHeight + 16}px`;
+    }
+
+    function update() {
+      ticking = false;
+      if (!window.matchMedia("(max-width: 620px)").matches) {
+        bar.style.transform = "";
+        if (fab) {
+          fab.style.transform = "";
+          fab.style.opacity = "";
+          fab.style.pointerEvents = "";
+        }
+        lastScrollY = window.scrollY;
+        hideOffset = 0;
+        return;
+      }
+      const y = Math.max(0, window.scrollY);
+      const delta = y - lastScrollY;
+      lastScrollY = y;
+      hideOffset = Math.min(barHeight, Math.max(0, hideOffset + delta));
+      if (y < 8) hideOffset = 0; // toujours visible tout en haut de la liste
+      bar.style.transform = `translateY(${hideOffset}px)`;
+      if (fab) {
+        const progress = barHeight ? hideOffset / barHeight : 0;
+        fab.style.transform = `scale(${1 - progress})`;
+        fab.style.opacity = String(1 - progress);
+        fab.style.pointerEvents = progress > 0.9 ? "none" : "";
+      }
+    }
+
+    window.addEventListener("resize", () => {
+      if (!window.matchMedia("(max-width: 620px)").matches) {
+        bar.style.transform = "";
+        hideOffset = 0;
+      }
+      barHeight = bar.getBoundingClientRect().height || barHeight;
+      positionFab();
+      lastScrollY = window.scrollY;
+    });
+    positionFab();
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(update);
+      },
+      { passive: true },
+    );
+  })();
+
   els.themeGrid.addEventListener("click", (e) => {
     const card = e.target.closest(".theme-card");
     if (!card) return;
-    applyTheme(card.getAttribute("data-theme-id"));
+    const id = card.getAttribute("data-theme-id");
+    applyTheme(id);
+
+    // Easter egg : tokyo → macchiato → tokyo → cappuccino débloque le thème
+    // secret "Liquid Glass". Le suivi ne compte que les clics volontaires
+    // dans la grille (pas la restauration du thème au chargement de la page).
+    if (!isLiquidGlassUnlocked()) {
+      themeClickHistory.push(id);
+      if (themeClickHistory.length > LIQUID_GLASS_SEQUENCE.length) themeClickHistory.shift();
+      if (themeClickHistory.join(",") === LIQUID_GLASS_SEQUENCE.join(",")) {
+        unlockLiquidGlass();
+        themeClickHistory = [];
+        applyTheme("liquid-glass");
+        showToast("Thème secret débloqué : Liquid Glass ✨");
+      }
+    }
   });
 
   applyTheme(loadStoredTheme());
@@ -2153,13 +2680,18 @@
     // Onglets actifs
     els.btnLeads.classList.toggle("active", view === "leads");
     els.btnContacts.classList.toggle("active", view === "contacts");
+    if (els.btnDeals) els.btnDeals.classList.toggle("active", view === "deals");
     els.btnLeads.setAttribute("aria-selected", view === "leads");
     els.btnContacts.setAttribute("aria-selected", view === "contacts");
+    if (els.btnDeals) els.btnDeals.setAttribute("aria-selected", view === "deals");
 
     // Libellés dynamiques
     if (els.statLabel) els.statLabel.textContent = cfg.statLabel;
     if (els.colStatut) els.colStatut.textContent = cfg.colStatut;
     if (els.colSociete) els.colSociete.textContent = cfg.colSociete;
+    if (els.colCol3) els.colCol3.textContent = cfg.col3 === "amount" ? "Montant" : "Email";
+    if (els.colCol4) els.colCol4.textContent = cfg.col4 === "closingDate" ? "Clôture prévue" : "Téléphone";
+    if (els.dealCreateBtnLabel) els.dealCreateBtnLabel.textContent = cfg.createLabel;
 
     // Réinitialisation
     els.search.value = "";
@@ -2196,17 +2728,12 @@
     hideSearchDropdown();
   });
   els.status.addEventListener("change", () => render(allRecords));
-  els.refresh.addEventListener("click", () => {
-    els.search.value = "";
-    els.clear.hidden = true;
-    els.searchKbdHint.hidden = false;
-    hideSearchDropdown();
-    loadRecords();
-  });
   if (els.btnLeads)
     els.btnLeads.addEventListener("click", () => switchView("leads"));
   if (els.btnContacts)
     els.btnContacts.addEventListener("click", () => switchView("contacts"));
+  if (els.btnDeals)
+    els.btnDeals.addEventListener("click", () => switchView("deals"));
 
   // --- Démarrage ---
   if (!BASE || BASE.includes("REMPLACER")) {

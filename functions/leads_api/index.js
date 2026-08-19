@@ -475,6 +475,33 @@ app.get("/leads/detail/:id", async (req, res) => {
   }
 });
 
+// Liste des affaires (depuis Data Store) — Deals_Cache ne contient que les
+// deals liés à un contact (voir sync_deals), le seul sous-ensemble synchronisé
+// aujourd'hui.
+app.get("/deals", async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const zcql = catalystApp.zcql();
+    const rows = await zcql.executeZCQLQuery(
+      "SELECT crm_id, Deal_Name, Stage, account_name, amount, closing_date FROM Deals_Cache ORDER BY ROWID DESC LIMIT 200",
+    );
+    const deals = rows.map((r) => {
+      const d = r.Deals_Cache;
+      return {
+        id: d.crm_id,
+        name: d.Deal_Name,
+        company: d.account_name,
+        amount: d.amount,
+        closingDate: d.closing_date,
+        status: d.Stage,
+      };
+    });
+    res.status(200).json({ leads: deals }); // même clé "leads" → réutilise le front tel quel
+  } catch (err) {
+    res.status(500).json({ error: "Erreur Data Store deals", detail: err.message });
+  }
+});
+
 // Récupère les deals associés à un contact, par correspondance de nom
 async function findDealsForContact(app, contactName) {
   if (!contactName) return [];
@@ -589,6 +616,93 @@ app.post("/deals", async (req, res) => {
   } catch (err) {
     console.error("POST /deals error:", err.message);
     res.status(500).json({ error: "Erreur création deal", detail: err.message });
+  }
+});
+
+// Création rapide d'un lead.
+app.post("/leads", async (req, res) => {
+  try {
+    const { lastName, firstName, company, email, phone } = req.body || {};
+    if (!lastName || !lastName.trim() || !company || !company.trim()) {
+      return res.status(400).json({ error: "Paramètres 'lastName' et 'company' requis." });
+    }
+
+    const fields = { Last_Name: lastName.trim(), Company: company.trim() };
+    if (firstName && firstName.trim()) fields.First_Name = firstName.trim();
+    if (email && email.trim()) fields.Email = email.trim();
+    if (phone && phone.trim()) fields.Phone = phone.trim();
+
+    const data = await crmWrite("POST", "/crm/v6/Leads", { data: [fields] });
+    const entry = assertCrmWriteOk(data, "Échec de la création du lead");
+    const leadId = entry.details && entry.details.id;
+
+    // Cache best-effort : le lead apparaît tout de suite dans la liste et la
+    // recherche, sans attendre le prochain cron sync_leads (qui backfillera
+    // ensuite crm_created_time/owner/statut avec les vraies valeurs CRM).
+    try {
+      const catalystApp = catalyst.initialize(req);
+      await catalystApp.datastore().table("Leads_Cache").insertRows([
+        {
+          crm_id: leadId,
+          name: [firstName && firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
+          company: company.trim(),
+          email: email || "",
+          phone: phone || "",
+          status: "",
+          source: "",
+          owner: "",
+        },
+      ]);
+    } catch (cacheErr) {
+      console.error("Cache Leads_Cache non alimenté à la création:", cacheErr.message);
+    }
+
+    res.status(200).json({ id: leadId });
+  } catch (err) {
+    console.error("POST /leads error:", err.message);
+    res.status(500).json({ error: "Erreur création lead", detail: err.message });
+  }
+});
+
+// Création rapide d'un contact.
+app.post("/contacts", async (req, res) => {
+  try {
+    const { lastName, firstName, email, phone } = req.body || {};
+    if (!lastName || !lastName.trim()) {
+      return res.status(400).json({ error: "Paramètre 'lastName' requis." });
+    }
+
+    const fields = { Last_Name: lastName.trim() };
+    if (firstName && firstName.trim()) fields.First_Name = firstName.trim();
+    if (email && email.trim()) fields.Email = email.trim();
+    if (phone && phone.trim()) fields.Phone = phone.trim();
+
+    const data = await crmWrite("POST", "/crm/v6/Contacts", { data: [fields] });
+    const entry = assertCrmWriteOk(data, "Échec de la création du contact");
+    const contactId = entry.details && entry.details.id;
+
+    // Cache best-effort — même logique que pour les leads ci-dessus.
+    try {
+      const catalystApp = catalyst.initialize(req);
+      await catalystApp.datastore().table("Contacts_Cache").insertRows([
+        {
+          crm_id: contactId,
+          name: [firstName && firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
+          account_name: "",
+          email: email || "",
+          phone: phone || "",
+          title: "",
+          owner: "",
+        },
+      ]);
+    } catch (cacheErr) {
+      console.error("Cache Contacts_Cache non alimenté à la création:", cacheErr.message);
+    }
+
+    res.status(200).json({ id: contactId });
+  } catch (err) {
+    console.error("POST /contacts error:", err.message);
+    res.status(500).json({ error: "Erreur création contact", detail: err.message });
   }
 });
 
@@ -719,27 +833,42 @@ app.post("/notes", async (req, res) => {
   }
 });
 
-// Fil d'activité (Notes + Tâches réelles) d'un lead, contact ou deal.
+// Fil d'activité (Notes en cache + Tâches CRM en direct) d'un lead, contact
+// ou deal. Les notes viennent de Notes_Cache (alimentée par le cron
+// sync_notes et le signal sync_notes_signal), filtrées à la fois par
+// parent_id ET module : un id CRM est en théorie unique tous modules
+// confondus, mais ce double filtre garantit qu'un contact A ne peut jamais
+// voir les remarques d'un autre enregistrement.
 app.get("/activity/:module/:id", async (req, res) => {
   try {
     const { module, id } = req.params;
     if (!["Leads", "Contacts", "Deals"].includes(module)) {
       return res.status(400).json({ error: "Module invalide." });
     }
-    const [notesData, tasksData] = await Promise.all([
-      crmRequest(`/crm/v6/${module}/${id}/Notes`).catch(() => null),
+    if (!/^[0-9]+$/.test(id)) {
+      return res.status(400).json({ error: "Id invalide." });
+    }
+
+    const catalystApp = catalyst.initialize(req);
+    const zcql = catalystApp.zcql();
+    const [notesRows, tasksData] = await Promise.all([
+      zcql
+        .executeZCQLQuery(
+          `SELECT title, content, owner, CREATEDTIME, MODIFIEDTIME FROM Notes_Cache WHERE parent_id = ${id} AND module = '${module}' ORDER BY MODIFIEDTIME DESC LIMIT 30`,
+        )
+        .catch(() => []),
       crmRequest(`/crm/v6/${module}/${id}/Tasks`).catch(() => null),
     ]);
-    const notes = (notesData && notesData.data) || [];
+    const notes = notesRows.map((r) => r.Notes_Cache);
     const tasks = (tasksData && tasksData.data) || [];
 
     const entries = notes
       .map((n) => {
-        const content = n.Note_Content || "";
+        const content = n.content || "";
         return {
           kind: /^Étape\s*:/.test(content) ? "stage" : "note",
           text: content,
-          date: n.Modified_Time || n.Created_Time || "",
+          date: n.MODIFIEDTIME || n.CREATEDTIME || "",
         };
       })
       .concat(
