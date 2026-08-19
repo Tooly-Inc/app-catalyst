@@ -33,6 +33,7 @@
     modalBack: document.getElementById("modalBack"),
     dealAvatar: document.getElementById("dealAvatar"),
     dealTitle: document.getElementById("dealTitle"),
+    modalQuickActions: document.getElementById("modalQuickActions"),
     dealSubtitle: document.getElementById("dealSubtitle"),
     dealBody: document.getElementById("dealBody"),
     dealFooter: document.getElementById("dealFooter"),
@@ -40,6 +41,9 @@
     activityPanel: document.getElementById("activityPanel"),
     activityPanelBack: document.getElementById("activityPanelBack"),
     activityPanelBody: document.getElementById("activityPanelBody"),
+    dealsListPanel: document.getElementById("dealsListPanel"),
+    dealsListPanelBack: document.getElementById("dealsListPanelBack"),
+    dealsListPanelBody: document.getElementById("dealsListPanelBody"),
     searchKbdHint: document.getElementById("searchKbdHint"),
     mobileSearchBtn: document.getElementById("mobileSearchBtn"),
     mobileSearchOverlay: document.getElementById("mobileSearchOverlay"),
@@ -399,6 +403,8 @@
       els.modalAvatar.textContent = "";
       els.modalSubtitle.hidden = true;
       els.modalSubtitle.textContent = "";
+      els.modalQuickActions.hidden = true;
+      els.modalQuickActions.innerHTML = "";
       // Réinitialise le volet affaire pour que la popup rouvre sur la fiche principale
       els.modalPanel.classList.remove("is-deal");
       els.modalViews.classList.remove("show-deal");
@@ -415,6 +421,10 @@
       els.activityPanel.classList.remove("is-open");
       els.activityPanelBody.innerHTML = "";
       els.modalPanel.classList.remove("is-activity");
+      els.dealsListPanel.hidden = true;
+      els.dealsListPanel.classList.remove("is-open");
+      els.dealsListPanelBody.innerHTML = "";
+      els.modalPanel.classList.remove("is-deals-list");
       els.modalViews.style.width = "";
       els.modalViews.style.flexShrink = "";
       currentEntity = null;
@@ -1065,6 +1075,52 @@
       : "";
   }
 
+  const PHONE_ICON_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const MAIL_ICON_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M2 4h20v16H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 6l10 7 10-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  // Icônes d'appel et d'email sous la fonction du contact : de simples liens
+  // tel:/mailto: — l'OS/le navigateur choisit l'appli (téléphone natif sur
+  // mobile ; Aircall si son extension intercepte tel: sur le web, sans rien
+  // à intégrer côté app). Si Téléphone ET Mobile sont renseignés et
+  // différents, l'icône ouvre un petit menu pour choisir le numéro.
+  function renderContactQuickActions(data) {
+    if (!data) return "";
+    const numbers = [];
+    if (data.phone) numbers.push({ label: "Téléphone", value: data.phone });
+    if (data.mobile && data.mobile !== data.phone) numbers.push({ label: "Mobile", value: data.mobile });
+
+    let html = "";
+    if (numbers.length === 1) {
+      html += `<a class="contact-action-btn" href="tel:${escapeHtml(numbers[0].value)}" title="Appeler ${escapeHtml(numbers[0].value)}" aria-label="Appeler">${PHONE_ICON_SVG}</a>`;
+    } else if (numbers.length > 1) {
+      html += `
+<div class="contact-action-dropdown">
+  <button class="contact-action-btn" type="button" title="Appeler" aria-label="Appeler">${PHONE_ICON_SVG}</button>
+  <div class="contact-action-menu" hidden>
+    ${numbers.map((n) => `<a href="tel:${escapeHtml(n.value)}">${escapeHtml(n.label)} : ${escapeHtml(n.value)}</a>`).join("")}
+  </div>
+</div>`;
+    }
+    if (data.email) {
+      html += `<a class="contact-action-btn" href="mailto:${escapeHtml(data.email)}" title="Envoyer un email à ${escapeHtml(data.email)}" aria-label="Envoyer un email">${MAIL_ICON_SVG}</a>`;
+    }
+    return html;
+  }
+
+  document.addEventListener("click", (e) => {
+    const toggleBtn = e.target.closest(".contact-action-dropdown > button");
+    if (toggleBtn) {
+      const menu = toggleBtn.nextElementSibling;
+      const wasHidden = menu.hidden;
+      document.querySelectorAll(".contact-action-menu").forEach((m) => (m.hidden = true));
+      menu.hidden = !wasHidden;
+      return;
+    }
+    if (!e.target.closest(".contact-action-menu")) {
+      document.querySelectorAll(".contact-action-menu").forEach((m) => (m.hidden = true));
+    }
+  });
+
   function renderDealRecapGrid(d) {
     const cells = [
       ["Montant", formatMoney(d.amount)],
@@ -1215,6 +1271,18 @@
   </button>`;
   }
 
+  // Même principe que renderActivityTrigger, pour les deals associés à un
+  // contact : ouvre dealsListPanel (voir openDealsListPanel) plutôt que
+  // d'afficher toutes les cartes en ligne dans la fiche.
+  function renderDealsTrigger(deals) {
+    if (!deals || !deals.length) return "";
+    return `
+  <button class="deals-trigger" type="button">
+    <span>💼 Affaires associées</span>
+    <span class="activity-trigger-count">${deals.length}</span>
+  </button>`;
+  }
+
   function updateActivityTriggerCount(containerEl, count) {
     const el = containerEl.querySelector(".activity-trigger-count");
     if (el) el.textContent = String(count);
@@ -1224,6 +1292,7 @@
   // de la recouvrir (voir .modal-panel.is-activity / .activity-panel en CSS) ---
   function openActivityPanel() {
     if (!els.activityPanel.hidden) return; // déjà ouvert
+    closeDealsListPanel(); // un seul panneau latéral ouvert à la fois
     const isDeal = els.modalViews.classList.contains("show-deal");
     let module, id, entries;
     if (isDeal) {
@@ -1278,6 +1347,76 @@
   els.activityPanelBack.addEventListener("click", closeActivityPanel);
   document.addEventListener("click", (e) => {
     if (e.target.closest(".activity-trigger")) openActivityPanel();
+  });
+
+  // --- Panneau des affaires associées à un contact : même mécanique que le
+  // panneau de remarques (voir openActivityPanel), mais le clic sur une
+  // affaire referme ce panneau et bascule vers son détail en gardant
+  // l'animation existante (voir openDealDetail / .modal-views.show-deal).
+  function openDealsListPanel() {
+    if (!els.dealsListPanel.hidden) return; // déjà ouvert
+    if (!currentDetailData) return;
+    closeActivityPanel(); // un seul panneau latéral ouvert à la fois
+    const deals = currentDetailData.data.deals || [];
+    els.dealsListPanelBody.innerHTML =
+      deals.map((d) => renderDeal(d, true)).join("") ||
+      '<p class="empty-sub">Aucune affaire associée.</p>';
+    // Même verrouillage de largeur que openActivityPanel : la piste ne doit
+    // pas s'étirer sur la nouvelle largeur de la popup.
+    const viewsWidth = els.modalViews.getBoundingClientRect().width;
+    els.modalViews.style.flexShrink = "0";
+    els.modalViews.style.width = `${viewsWidth}px`;
+    els.modalPanel.classList.add("is-deals-list");
+    els.dealsListPanel.hidden = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        els.dealsListPanel.classList.add("is-open");
+      });
+    });
+  }
+
+  function closeDealsListPanel() {
+    if (els.dealsListPanel.hidden) return;
+    els.dealsListPanel.classList.remove("is-open");
+    els.modalPanel.classList.remove("is-deals-list");
+    setTimeout(() => {
+      els.dealsListPanel.hidden = true;
+      els.dealsListPanelBody.innerHTML = "";
+      els.modalViews.style.width = "";
+      els.modalViews.style.flexShrink = "";
+    }, 600);
+  }
+
+  els.dealsListPanelBack.addEventListener("click", closeDealsListPanel);
+  els.dealsListPanelBody.addEventListener("click", (e) => {
+    const card = e.target.closest(".deal-card");
+    if (!card) return;
+    const id = card.getAttribute("data-deal-id");
+    if (!id) return;
+    // Bascule directe vers l'affaire plutôt que de repasser par le chemin de
+    // fermeture normal (closeDealsListPanel) : celui-ci ne relâche le verrou
+    // de largeur de modal-views qu'après 600ms (voir son setTimeout), et
+    // openDealDetail() s'exécute entre-temps — le contenu de l'affaire se
+    // retrouve alors mal placé le temps que le verrou saute. On nettoie donc
+    // tout de suite, sans animation de fermeture du panneau (inutile, on
+    // quitte cette vue de toute façon).
+    els.dealsListPanel.classList.remove("is-open");
+    els.dealsListPanel.hidden = true;
+    els.dealsListPanelBody.innerHTML = "";
+    els.modalViews.style.width = "";
+    els.modalViews.style.flexShrink = "";
+    // is-deals-list (780px) et is-deal (760px) sont trop proches pour
+    // justifier une animation entre les deux — l'enchaîner juste après le
+    // bounce d'ouverture du panneau (encore en cours si le clic est rapide)
+    // retargete cette transition en plein vol : l'easing de bounce dépasse
+    // alors largement les deux valeurs avant de se stabiliser. On coupe donc
+    // la transition le temps de ce changement de classe ponctuel.
+    els.modalPanel.style.transition = "none";
+    els.modalPanel.classList.remove("is-deals-list");
+    els.modalPanel.classList.add("is-deal");
+    void els.modalPanel.offsetHeight; // force l'application avant de réactiver la transition
+    els.modalPanel.style.transition = "";
+    openDealDetail(id);
   });
 
   // --- Volet affaire : glissement + redimensionnement "bureau" avec bounce ---
@@ -1592,6 +1731,7 @@
     if (currentDetailData) showBackButton();
     else hideBackButton();
     closeActivityPanel();
+    closeDealsListPanel();
 
     dealEditing = false;
     dealDraft = null;
@@ -1636,6 +1776,7 @@
     hideBackButton();
     hideRelanceToast();
     closeActivityPanel();
+    closeDealsListPanel();
     // Vide le volet affaire en même temps qu'on recalcule la hauteur : sinon
     // son contenu (potentiellement plus grand) reste dans le DOM et continue
     // de gonfler la hauteur partagée de la rangée à deux volets. La largeur
@@ -1668,13 +1809,14 @@
     const orderToolbarHtml = renderOrderToolbar(view, data.groups);
     const groupsHtml = renderDetailGroups(data.groups, cfg, view);
 
-    // Rappel visible : les deals associés, en carte "recap", au-dessus du détail complet
+    // Deals associés : bouton compact qui ouvre dealsListPanel (voir
+    // renderDealsTrigger) plutôt que d'afficher toutes les cartes en ligne.
     const deals = data.deals || [];
-    const recapHtml = deals.map((d) => renderDeal(d, true)).join("");
+    const dealsTriggerHtml = renderDealsTrigger(deals);
 
     const crmLink = renderCrmLink(data.crmUrl);
     const triggerHtml = renderActivityTrigger(activity);
-    setModalBody(orderToolbarHtml + recapHtml + triggerHtml + groupsHtml + crmLink);
+    setModalBody(orderToolbarHtml + dealsTriggerHtml + triggerHtml + groupsHtml + crmLink);
   }
 
   async function openDetailModal(id, viewOverride) {
@@ -1685,6 +1827,8 @@
     els.modalTitle.textContent = "Détails";
     els.modalAvatar.textContent = "";
     els.modalSubtitle.hidden = true;
+    els.modalQuickActions.hidden = true;
+    els.modalQuickActions.innerHTML = "";
     setModalBody('<div class="spinner"></div>');
     openModal();
 
@@ -1705,6 +1849,10 @@
           els.modalSubtitle.textContent = data.subtitle;
           els.modalSubtitle.hidden = false;
         }
+        if (view === "contacts") {
+          els.modalQuickActions.innerHTML = renderContactQuickActions(data);
+          els.modalQuickActions.hidden = !els.modalQuickActions.innerHTML.trim();
+        }
         renderMainDetailBody();
       });
     } catch (err) {
@@ -1716,6 +1864,10 @@
   }
 
   els.modalBody.addEventListener("click", (e) => {
+    if (e.target.closest(".deals-trigger")) {
+      openDealsListPanel();
+      return;
+    }
     const card = e.target.closest(".deal-card");
     if (!card) return;
     const id = card.getAttribute("data-deal-id");
@@ -1773,6 +1925,10 @@
     }
     if (!els.activityPanel.hidden) {
       closeActivityPanel();
+      return;
+    }
+    if (!els.dealsListPanel.hidden) {
+      closeDealsListPanel();
       return;
     }
     if (els.modalOverlay.hidden) return;

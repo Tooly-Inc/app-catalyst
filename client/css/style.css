@@ -773,6 +773,14 @@ body {
 .modal-panel.is-deal.is-activity {
   max-width: 1120px;
 }
+/* Panneau des affaires associées (voir #dealsListPanel) : même mécanique de
+   prolongement que .is-activity. */
+.modal-panel.is-deals-list {
+  max-width: 780px;
+}
+.modal-panel.is-deal.is-deals-list {
+  max-width: 1120px;
+}
 
 /* Piste à deux volets (fiche principale / fiche affaire) qui glisse horizontalement */
 .modal-views {
@@ -899,6 +907,69 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--n3);
+}
+
+/* Icônes d'appel / email rapide sous la fonction du contact (voir
+   renderContactQuickActions) : tel:/mailto: — le navigateur/l'OS choisit
+   l'appli (téléphone natif sur mobile, Aircall si son extension intercepte
+   tel: sur le web). */
+.contact-quick-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  position: relative;
+}
+.contact-quick-actions:empty {
+  display: none;
+}
+.contact-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--n1);
+  color: var(--n6);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.contact-action-btn:hover {
+  background: var(--magenta-3);
+  color: var(--magenta-n1);
+}
+.contact-action-dropdown {
+  position: relative;
+}
+.contact-action-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--n0);
+  border: 1px solid var(--n1);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 3;
+  white-space: nowrap;
+}
+.contact-action-menu a {
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--n7);
+  text-decoration: none;
+}
+.contact-action-menu a:hover {
+  background: var(--n1);
 }
 .modal-close {
   position: absolute;
@@ -1276,8 +1347,12 @@ body {
   white-space: nowrap;
 }
 
-/* Bouton qui ouvre le panneau des remarques et de l'activité (voir .activity-panel) */
-.activity-trigger {
+/* Bouton qui ouvre le panneau des remarques et de l'activité (voir .activity-panel),
+   ou celui des affaires associées (voir .deals-trigger/#dealsListPanel) — même
+   style partagé par les deux, mais des classes distinctes pour le comportement
+   (voir les listeners JS : un sélecteur commun ouvrirait les deux panneaux). */
+.activity-trigger,
+.deals-trigger {
   display: flex;
   align-items: center;
   width: 100%;
@@ -1294,7 +1369,8 @@ body {
   cursor: pointer;
   transition: background 0.15s;
 }
-.activity-trigger:hover {
+.activity-trigger:hover,
+.deals-trigger:hover {
   background: var(--magenta-3);
 }
 .activity-trigger-count {
@@ -1307,7 +1383,8 @@ body {
   font-size: 11.5px;
   text-align: center;
 }
-.activity-trigger::after {
+.activity-trigger::after,
+.deals-trigger::after {
   content: "›";
   margin-left: auto;
   color: var(--n3);
@@ -2260,7 +2337,9 @@ body {
      ou les remarques. */
   .modal-panel.is-deal,
   .modal-panel.is-activity,
-  .modal-panel.is-deal.is-activity {
+  .modal-panel.is-deal.is-activity,
+  .modal-panel.is-deals-list,
+  .modal-panel.is-deal.is-deals-list {
     max-width: none;
   }
 

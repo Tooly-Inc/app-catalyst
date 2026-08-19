@@ -940,6 +940,11 @@ app.get("/contacts/detail/:id", async (req, res) => {
       subtitle: record ? record.Title || record.Account_Name || "" : "",
       crmUrl: buildCrmUrl("Contacts", id),
       groups: buildDetailGroups(record, { titleKey: "Full_Name", subtitleKey }),
+      // Champs bruts (non formatés) pour les icônes rapides appel/email de la
+      // fiche — les groupes ci-dessus ne portent que du texte déjà affiché.
+      phone: record ? record.Phone || "" : "",
+      mobile: record ? record.Mobile || "" : "",
+      email: record ? record.Email || "" : "",
       deals,
     });
   } catch (err) {
